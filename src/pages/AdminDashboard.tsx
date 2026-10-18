@@ -13,7 +13,7 @@ const statusColor: Record<string, string> = {
 };
 
 const AdminDashboard = () => {
-  const { data: stats,  loading: statsLoading }  = useAdminStats();
+  const { data: stats, loading: statsLoading, error: statsError } = useAdminStats();
   const { data: users,  loading: usersLoading }  = useAllUsers();
   const { data: appts,  loading: apptsLoading }  = useAllAppointments();
 
@@ -31,6 +31,10 @@ const AdminDashboard = () => {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
+      ) : statsError ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Could not load platform counts: {statsError}
+        </p>
       ) : (
         <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard icon={Users}        label="Total users"     value={stats?.totalUsers ?? 0}       trend={`${stats?.patients ?? 0} patients`}  accent="primary" />

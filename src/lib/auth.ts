@@ -25,11 +25,11 @@ export async function getSessionAsync(): Promise<Session | null> {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role, onboarding_completed, avatar_url")
+    .select("id, email, full_name, role, onboarding_completed, avatar_url, is_active")
     .eq("id", user.id)
     .single();
 
-  if (error || !profile) return null;
+  if (error || !profile || profile.is_active !== true) return null;
 
   return {
     id:                  profile.id,
@@ -73,12 +73,19 @@ export async function signIn(email: string, password: string): Promise<Session> 
   // Query profile directly using the user ID from the sign-in response
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role, onboarding_completed, avatar_url")
+    .select("id, email, full_name, role, onboarding_completed, avatar_url, is_active")
     .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
     throw new Error("Failed to load profile. Please try again.");
+  }
+  if (profile.is_active !== true) {
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      console.error("Unable to end inactive user's authenticated session:", signOutError);
+    }
+    throw new Error("This account is inactive. Contact your administrator.");
   }
 
   const session: Session = {

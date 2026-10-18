@@ -11,6 +11,10 @@ AS $$
     WHERE profile.id = (SELECT auth.uid())
       AND profile.is_active IS TRUE
       AND profile.role = ANY (_roles)
+      AND (
+        profile.role NOT IN ('admin', 'doctor')
+        OR (SELECT auth.jwt() ->> 'aal') = 'aal2'
+      )
   );
 $$;
 
@@ -468,6 +472,11 @@ CREATE POLICY audit_log_insert_admin
 ON public.audit_log FOR INSERT TO authenticated
 WITH CHECK (
   actor_id = (SELECT auth.uid())
+  AND actor_email = (
+    SELECT profile.email
+    FROM public.profiles AS profile
+    WHERE profile.id = (SELECT auth.uid())
+  )
   AND public.current_user_has_role(ARRAY['admin']::text[])
 );
 
@@ -480,6 +489,15 @@ DROP POLICY IF EXISTS doctors_read_patient_records ON storage.objects;
 DROP POLICY IF EXISTS patients_delete_own_records ON storage.objects;
 DROP POLICY IF EXISTS patients_read_own_records ON storage.objects;
 DROP POLICY IF EXISTS patients_upload_own_records ON storage.objects;
+DROP POLICY IF EXISTS medical_records_objects_admin_read ON storage.objects;
+DROP POLICY IF EXISTS medical_records_objects_patient_read ON storage.objects;
+DROP POLICY IF EXISTS medical_records_objects_doctor_read ON storage.objects;
+DROP POLICY IF EXISTS medical_records_objects_patient_upload ON storage.objects;
+DROP POLICY IF EXISTS medical_records_objects_patient_delete ON storage.objects;
+DROP POLICY IF EXISTS avatars_public_read ON storage.objects;
+DROP POLICY IF EXISTS avatars_user_upload ON storage.objects;
+DROP POLICY IF EXISTS avatars_user_update ON storage.objects;
+DROP POLICY IF EXISTS avatars_user_delete ON storage.objects;
 DROP POLICY IF EXISTS public_read_avatars ON storage.objects;
 DROP POLICY IF EXISTS users_delete_own_avatar ON storage.objects;
 DROP POLICY IF EXISTS users_update_own_avatar ON storage.objects;

@@ -14,6 +14,7 @@ import {
   setUserActive, writeAuditLog,
 } from "@/hooks/use-supabase-data";
 import { InviteUserModal } from "@/components/InviteUserModal";
+import { InvitationManager } from "@/components/InvitationManager";
 import { Avatar } from "@/components/AvatarUpload";
 import { getSession } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -271,7 +272,7 @@ const AdminUsers = () => {
   const adminSession = getSession();
   const [refetchKey, setRefetchKey] = useState(0);
   const { data: users,  loading: usersLoading } = useAllUsers(refetchKey);
-  const { data: stats,  loading: statsLoading } = useAdminStats();
+  const { data: stats, loading: statsLoading, error: statsError } = useAdminStats();
 
   const [tab, setTab]             = useState<Tab>("patients");
   const [unlockedPatients, setUnlockedPatients] = useState(false);
@@ -296,8 +297,20 @@ const AdminUsers = () => {
     const newState = !u.is_active;
     try {
       await setUserActive(u.id, newState);
-      if (adminSession) await writeAuditLog(adminSession.id, adminSession.email, newState ? "activated" : "deactivated", "user", u.id, { email: u.email });
-      toast.success(`${u.full_name} ${newState ? "activated" : "deactivated"}`);
+      let auditFailed = false;
+      if (adminSession) {
+        try {
+          await writeAuditLog(adminSession.id, adminSession.email, newState ? "activated" : "deactivated", "user", u.id, { email: u.email });
+        } catch (auditError) {
+          auditFailed = true;
+          console.error("User status updated but audit logging failed:", auditError);
+        }
+      }
+      if (auditFailed || !adminSession) {
+        toast.warning(`${u.full_name} ${newState ? "activated" : "deactivated"}, but the audit record could not be saved.`);
+      } else {
+        toast.success(`${u.full_name} ${newState ? "activated" : "deactivated"}`);
+      }
       setRefetchKey(k => k + 1);
     } catch (e: any) {
       toast.error(e.message ?? "Failed to update");
@@ -325,11 +338,17 @@ const AdminUsers = () => {
         </Button>
       </div>
 
+      <InvitationManager refreshKey={refetchKey} />
+
       {/* Stats */}
       {statsLoading ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
+      ) : statsError ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Could not load account counts: {statsError}
+        </p>
       ) : (
         <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard icon={Users}       label="Total users" value={stats?.totalUsers ?? 0} trend="on platform" accent="primary" />

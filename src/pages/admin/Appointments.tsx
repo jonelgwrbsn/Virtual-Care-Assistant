@@ -21,7 +21,7 @@ const AdminAppointments = () => {
   const adminSession = getSession();
   const [refetchKey, setRefetchKey] = useState(0);
   const { data: appts,  loading: apptsLoading, error: apptsError } = useAllAppointments(refetchKey);
-  const { data: stats,  loading: statsLoading } = useAdminStats();
+  const { data: stats, loading: statsLoading, error: statsError } = useAdminStats();
   const { data: doctors } = useAllDoctors();
 
   const [updating, setUpdating]   = useState<string | null>(null);
@@ -39,8 +39,19 @@ const AdminAppointments = () => {
     try {
       await updateAppointmentStatus(id, status);
       setLocalStatus(prev => ({ ...prev, [id]: status }));
-      if (adminSession) await writeAuditLog(adminSession.id, adminSession.email, status, "appointment", id, { patient: patientName });
-      toast.success(`Appointment ${status}`);
+      let auditFailed = false;
+      if (adminSession) {
+        try {
+          await writeAuditLog(adminSession.id, adminSession.email, status, "appointment", id, { patient: patientName });
+        } catch (auditError) {
+          auditFailed = true;
+          console.error("Appointment updated but audit logging failed:", auditError);
+        }
+      }
+      if (auditFailed || !adminSession) {
+        toast.warning(`Appointment ${status}, but the audit record could not be saved.`);
+      }
+      else toast.success(`Appointment ${status}`);
       setRefetchKey(k => k + 1);
     } catch (e: any) {
       toast.error(e.message ?? "Failed to update");
@@ -55,8 +66,19 @@ const AdminAppointments = () => {
     try {
       await reassignAppointmentDoctor(reassignAppt.id, newDoctorId);
       const doctorName = doctors?.find((d: any) => d.id === newDoctorId)?.full_name ?? newDoctorId;
-      if (adminSession) await writeAuditLog(adminSession.id, adminSession.email, "updated", "appointment", reassignAppt.id, { reassigned_to: doctorName });
-      toast.success(`Reassigned to ${doctorName}`);
+      let auditFailed = false;
+      if (adminSession) {
+        try {
+          await writeAuditLog(adminSession.id, adminSession.email, "updated", "appointment", reassignAppt.id, { reassigned_to: doctorName });
+        } catch (auditError) {
+          auditFailed = true;
+          console.error("Appointment reassigned but audit logging failed:", auditError);
+        }
+      }
+      if (auditFailed || !adminSession) {
+        toast.warning(`Appointment reassigned to ${doctorName}, but its audit record could not be saved.`);
+      }
+      else toast.success(`Reassigned to ${doctorName}`);
       setReassignAppt(null);
       setNewDoctorId("");
       setRefetchKey(k => k + 1);
@@ -109,6 +131,10 @@ const AdminAppointments = () => {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
+      ) : statsError ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Could not load appointment counts: {statsError}
+        </p>
       ) : (
         <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard icon={ClipboardList} label="Total"     value={stats?.totalAppointments ?? 0} trend="all time"              accent="primary" />

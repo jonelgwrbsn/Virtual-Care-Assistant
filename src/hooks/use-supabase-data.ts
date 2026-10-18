@@ -242,6 +242,18 @@ export function useAdminStats() {
         supabase.from("consultations").select("*", { count: "exact", head: true }),
         supabase.from("consultations").select("*", { count: "exact", head: true }).eq("status", "live"),
       ]);
+    const statsError = [
+      patientsRes.error,
+      doctorsRes.error,
+      adminsRes.error,
+      apptsRes.error,
+      pendingRes.error,
+      cancelledRes.error,
+      consultsRes.error,
+      liveRes.error,
+    ].find(Boolean);
+    if (statsError) throw statsError;
+
     const patients = patientsRes.count ?? 0;
     const doctors  = doctorsRes.count ?? 0;
     const admins   = adminsRes.count ?? 0;
@@ -255,26 +267,6 @@ export function useAdminStats() {
       totalConsults:     consultsRes.count ?? 0,
       liveConsults:      liveRes.count ?? 0,
     };
-  }, []);
-}
-
-// ── Admin: security audit log from Supabase auth ───────────
-export function useSecurityEvents() {
-  return useQuery(async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, role, created_at, updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(10);
-    if (error) throw error;
-    // Build synthetic audit events from profile activity
-    return (data ?? []).map((p) => ({
-      time: p.updated_at,
-      event: p.created_at === p.updated_at ? "Account created" : "Profile updated",
-      who: p.email,
-      role: p.role,
-      level: p.role === "admin" ? "Critical" : "Info",
-    }));
   }, []);
 }
 
@@ -448,7 +440,15 @@ export function useAuditLog(refetchKey = 0) {
 }
 
 export async function writeAuditLog(actorId: string, actorEmail: string, action: string, entity: string, entityId?: string, details?: object) {
-  await supabase.from("audit_log").insert({ actor_id: actorId, actor_email: actorEmail, action, entity, entity_id: entityId, details });
+  const { error } = await supabase.from("audit_log").insert({
+    actor_id: actorId,
+    actor_email: actorEmail,
+    action,
+    entity,
+    entity_id: entityId,
+    details,
+  });
+  if (error) throw error;
 }
 
 // ── Admin: patient full profile ────────────────────────────

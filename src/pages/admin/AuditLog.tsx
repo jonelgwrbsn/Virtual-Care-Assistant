@@ -18,7 +18,7 @@ const actionColor: Record<string, string> = {
 };
 
 export default function AuditLog() {
-  const { data: logs, loading } = useAuditLog();
+  const { data: logs, loading, error } = useAuditLog();
   const [search, setSearch] = useState("");
 
   const filtered = (logs ?? []).filter((l: any) =>
@@ -36,7 +36,11 @@ export default function AuditLog() {
         <p className="mt-1 text-sm text-muted-foreground">Full record of all admin and system actions.</p>
       </div>
 
-      {loading ? <SectionCardSkeleton rows={8} /> : (
+      {loading ? <SectionCardSkeleton rows={8} /> : error ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Could not load audit records: {error}
+        </p>
+      ) : (
         <SectionCard
           title={`${filtered.length} events`}
           action={

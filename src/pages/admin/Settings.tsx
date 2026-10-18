@@ -4,10 +4,10 @@ import { SectionCard, SectionCardSkeleton } from "@/components/dashboard/Cards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Loader2, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
+import { writeAuditLog } from "@/hooks/use-supabase-data";
 import { toast } from "sonner";
 
 interface PlatformSettings {
@@ -15,101 +15,132 @@ interface PlatformSettings {
   org_name: string;
   domain: string;
   timezone: string;
-  mfa: boolean;
-  ai_triage: boolean;
-  data_export: boolean;
-  maintenance_mode: boolean;
-  notif_critical_alerts: boolean;
-  notif_daily_summary: boolean;
-  notif_weekly_digest: boolean;
-  notif_new_users: boolean;
 }
 
 const Settings = () => {
   const session = getSession();
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
+  const [saving, setSaving] = useState(false);
   const [settingsId, setSettingsId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [org, setOrg] = useState("");
+  const [domain, setDomain] = useState("");
+  const [timezone, setTimezone] = useState("");
 
-  const [org,    setOrg]    = useState("Virtual Care Assistant");
-  const [domain, setDomain] = useState("vca.health");
-  const [tz,     setTz]     = useState("UTC+08:00 (Asia/Manila)");
-
-  const [prefs, setPrefs] = useState({
-    mfa:         true,
-    aiTriage:    true,
-    dataExport:  true,
-    maintenance: false,
-  });
-
-  const [notifs, setNotifs] = useState({
-    criticalAlerts: true,
-    dailySummary:   true,
-    weeklyDigest:   false,
-    newUsers:       false,
-  });
-
-  // Load settings on mount
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         const { data, error } = await supabase
           .from("platform_settings")
-          .select("*")
+          .select("id, org_name, domain, timezone")
           .limit(1)
           .maybeSingle();
         if (error) throw error;
+        if (cancelled) return;
+
         if (data) {
-          const s = data as PlatformSettings;
-          setSettingsId(s.id);
-          setOrg(s.org_name);
-          setDomain(s.domain);
-          setTz(s.timezone);
-          setPrefs({ mfa: s.mfa, aiTriage: s.ai_triage, dataExport: s.data_export, maintenance: s.maintenance_mode });
-          setNotifs({ criticalAlerts: s.notif_critical_alerts, dailySummary: s.notif_daily_summary, weeklyDigest: s.notif_weekly_digest, newUsers: s.notif_new_users });
+          const settings = data as PlatformSettings;
+          setSettingsId(settings.id);
+          setOrg(settings.org_name);
+          setDomain(settings.domain);
+          setTimezone(settings.timezone);
+        } else {
+          setSettingsId(null);
+          setOrg("");
+          setDomain("");
+          setTimezone("");
         }
-      } catch (e: any) {
-        toast.error("Failed to load settings");
+      } catch (error) {
+        console.error("Unable to load platform settings:", error);
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error ? error.message : "Unable to load platform settings.",
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-    load();
-  }, []);
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   const handleSave = async () => {
+    const trimmedOrg = org.trim();
+    const trimmedDomain = domain.trim();
+    const trimmedTimezone = timezone.trim();
+    if (!trimmedOrg || !trimmedDomain || !trimmedTimezone) {
+      toast.error("Organization name, domain, and timezone are required.");
+      return;
+    }
+    if (trimmedOrg.length > 120 || trimmedDomain.length > 253 || trimmedTimezone.length > 100) {
+      toast.error("One or more settings exceed the allowed length.");
+      return;
+    }
+    if (!session) {
+      toast.error("Your administrator session is unavailable. Sign in again.");
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
-        org_name:              org.trim(),
-        domain:                domain.trim(),
-        timezone:              tz.trim(),
-        mfa:                   prefs.mfa,
-        ai_triage:             prefs.aiTriage,
-        data_export:           prefs.dataExport,
-        maintenance_mode:      prefs.maintenance,
-        notif_critical_alerts: notifs.criticalAlerts,
-        notif_daily_summary:   notifs.dailySummary,
-        notif_weekly_digest:   notifs.weeklyDigest,
-        notif_new_users:       notifs.newUsers,
-        updated_at:            new Date().toISOString(),
-        updated_by:            session?.id ?? null,
+        org_name: trimmedOrg,
+        domain: trimmedDomain,
+        timezone: trimmedTimezone,
+        updated_at: new Date().toISOString(),
+        updated_by: session.id,
       };
+      let updatedSettingsId = settingsId;
 
       if (settingsId) {
-        const { error } = await supabase.from("platform_settings").update(payload).eq("id", settingsId);
+        const { data, error } = await supabase
+          .from("platform_settings")
+          .update(payload)
+          .eq("id", settingsId)
+          .select("id")
+          .maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error("No settings record was updated. Check the database permissions.");
       } else {
-        const { data, error } = await supabase.from("platform_settings").insert(payload).select("id").single();
+        const { data, error } = await supabase
+          .from("platform_settings")
+          .insert({
+            ...payload,
+            mfa: false,
+            ai_triage: false,
+            data_export: false,
+            maintenance_mode: false,
+            notif_critical_alerts: false,
+            notif_daily_summary: false,
+            notif_weekly_digest: false,
+            notif_new_users: false,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
         setSettingsId(data.id);
+        updatedSettingsId = data.id;
       }
 
-      toast.success("Settings saved", { description: `Organization: ${org} · Timezone: ${tz}` });
-    } catch (e: any) {
-      console.error("Settings save error:", e);
-      toast.error(e.message ?? "Failed to save settings");
+      try {
+        await writeAuditLog(session.id, session.email, "updated", "platform_settings", updatedSettingsId ?? undefined);
+        toast.success("Organization settings saved.");
+      } catch (auditError) {
+        console.error("Organization settings saved but audit logging failed:", auditError);
+        toast.warning("Settings were saved, but their audit record could not be saved.");
+      }
+    } catch (error) {
+      console.error("Unable to save platform settings:", error);
+      toast.error(error instanceof Error ? error.message : "Unable to save platform settings.");
     } finally {
       setSaving(false);
     }
@@ -138,70 +169,70 @@ const Settings = () => {
         <h1 className="font-display text-3xl font-bold tracking-tight">Settings</h1>
       </div>
 
+      {loadError && (
+        <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p className="text-destructive">Could not load settings: {loadError}</p>
+          <Button variant="outline" onClick={() => setReloadKey((key) => key + 1)}>
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-2">
-        <SectionCard title="Organization">
+        <SectionCard title="Organization profile">
+          <p className="mb-4 text-xs text-muted-foreground">
+            These values are stored in the platform settings table. They do not yet change
+            application branding, URLs, or timezone behavior elsewhere in the app.
+          </p>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="org">Organization name</Label>
-              <Input id="org" value={org} onChange={e => setOrg(e.target.value)} />
+              <Input id="org" maxLength={120} value={org} onChange={(event) => setOrg(event.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="domain">Primary domain</Label>
-              <Input id="domain" value={domain} onChange={e => setDomain(e.target.value)} />
+              <Input id="domain" maxLength={253} value={domain} onChange={(event) => setDomain(event.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="tz">Timezone</Label>
-              <Input id="tz" value={tz} onChange={e => setTz(e.target.value)} />
+              <Label htmlFor="timezone">Timezone</Label>
+              <Input id="timezone" maxLength={100} value={timezone} onChange={(event) => setTimezone(event.target.value)} />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSave} disabled={saving || !!loadError} className="gap-2 bg-gradient-primary text-primary-foreground">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save organization profile
+              </Button>
             </div>
           </div>
         </SectionCard>
 
-        <SectionCard title="Platform preferences">
-          <div className="space-y-4">
-            {[
-              { key: "aiTriage",    label: "AI triage suggestions",       desc: "Show AI-driven priority on patient queue." },
-              { key: "dataExport",  label: "Patient data export",         desc: "Allow patients to export their records." },
-              { key: "maintenance", label: "Maintenance mode",            desc: "Temporarily restrict access for upgrades." },
-            ].map(p => (
-              <div key={p.key} className="flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-background/60 p-3.5">
-                <div>
-                  <div className="text-sm font-semibold">{p.label}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{p.desc}</div>
-                </div>
-                <Switch
-                  checked={prefs[p.key as keyof typeof prefs]}
-                  onCheckedChange={v => setPrefs(prev => ({ ...prev, [p.key]: v }))}
-                />
-              </div>
-            ))}
-          </div>
+        <SectionCard title="Security and platform controls">
+          <ul className="space-y-3 text-sm">
+            <li className="rounded-xl border border-border/60 bg-background/60 p-3.5">
+              <div className="font-semibold">Staff multi-factor authentication</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Required by the app for doctor and administrator workspaces. Database enforcement
+                requires the reviewed RLS migration to be applied in Supabase.
+              </p>
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/60 p-3.5">
+              <div className="font-semibold">Maintenance mode, AI controls, and patient export</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Not available as operational controls yet. They are intentionally not editable here.
+              </p>
+            </li>
+          </ul>
         </SectionCard>
 
-        <SectionCard title="Notifications" className="lg:col-span-2">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { key: "criticalAlerts", label: "Email alerts for critical incidents" },
-              { key: "dailySummary",   label: "Daily operations summary" },
-              { key: "weeklyDigest",   label: "Weekly analytics digest" },
-              { key: "newUsers",       label: "New user registrations" },
-            ].map(n => (
-              <label key={n.key} className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 p-3.5 cursor-pointer">
-                <span className="text-sm">{n.label}</span>
-                <Switch
-                  checked={notifs[n.key as keyof typeof notifs]}
-                  onCheckedChange={v => setNotifs(prev => ({ ...prev, [n.key]: v }))}
-                />
-              </label>
-            ))}
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-primary-foreground gap-2">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4" /> Save changes</>}
-            </Button>
-          </div>
+        <SectionCard title="Notification delivery" className="lg:col-span-2">
+          <p className="text-sm text-muted-foreground">
+            Email notifications and scheduled summaries are not connected to a delivery service.
+            Notification preferences are disabled until delivery and monitoring are implemented.
+          </p>
         </SectionCard>
       </div>
     </DashboardLayout>
   );
 };
+
 export default Settings;

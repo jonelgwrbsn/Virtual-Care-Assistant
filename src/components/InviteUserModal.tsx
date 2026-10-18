@@ -15,6 +15,38 @@ interface Props {
   onInvited?: () => void;
 }
 
+async function getInviteErrorMessage(error: unknown): Promise<{ message: string; description?: string }> {
+  if (error instanceof Error && "context" in error && error.context instanceof Response) {
+    const response = error.context;
+    if (response.status === 404) {
+      return {
+        message: "The invitation service is not available.",
+        description: "Deploy the invite-user Edge Function to the Supabase project configured for this app.",
+      };
+    }
+
+    try {
+      const body: unknown = await response.clone().json();
+      if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
+        return { message: body.error };
+      }
+    } catch {
+      // Use the SDK's error message when the Edge Function response isn't JSON.
+    }
+  }
+
+  if (error instanceof Error && error.name === "FunctionsFetchError") {
+    return {
+      message: "Could not reach the invitation service.",
+      description: "Check the network connection and confirm invite-user is deployed to this Supabase project.",
+    };
+  }
+
+  return {
+    message: error instanceof Error ? error.message : "Failed to invite user.",
+  };
+}
+
 export const InviteUserModal = ({ open, onClose, onInvited }: Props) => {
   const [loading, setLoading] = useState(false);
   const [name,    setName]    = useState("");
@@ -41,7 +73,8 @@ export const InviteUserModal = ({ open, onClose, onInvited }: Props) => {
       reset();
     } catch (error) {
       console.error("Unable to invite user:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to invite user");
+      const details = await getInviteErrorMessage(error);
+      toast.error(details.message, { description: details.description });
     } finally {
       setLoading(false);
     }

@@ -20,11 +20,26 @@ supabase functions deploy invite-user
 ```
 
 The hosted function needs `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
-`SUPABASE_SERVICE_ROLE_KEY` in its server environment. Configure Supabase Auth's
-Site URL and allowed redirect URLs for the deployed application, and ensure
-invitation emails are configured. Bootstrap the first admin through a trusted
-Supabase administrative process; never grant the role through client metadata
-or a public registration page.
+`SUPABASE_SERVICE_ROLE_KEY` in its server environment. Set the server-only
+`APP_SITE_URL` function secret to the HTTPS origin of the deployed application.
+Configure Supabase Auth's Site URL and allowed redirect URLs to include
+`https://<your-app-host>/accept-invite`, and ensure invitation emails are
+configured with a confirmation link that returns to the supplied redirect URL.
+The invitation record expires after seven days; configure Supabase Auth's email
+link expiry to no more than seven days as well. Bootstrap the first admin
+through a trusted Supabase administrative process; never grant the role through
+client metadata or a public registration page.
+
+The lifecycle migration `migrations/20261019000000_admin_invitation_lifecycle.sql`
+creates the service-role-only invitation ledger and marks a pending invitation
+accepted when its Auth user confirms the email link. Apply the reviewed RLS/MFA
+migrations first, then this invitation migration, before deploying the updated
+Edge Function and frontend. The function supports admin+AAL2 invite/list/resend/
+revoke operations, expires pending records, and writes invitation events to
+`audit_log`. Resend/revoke invalidates the previous unconfirmed Auth user; it
+never deletes an account that has confirmed its email. Do not deploy the updated
+function before the migration exists. Validate the complete email redirect,
+password setup, expiry, resend, revoke, and audit behavior on staging first.
 
 ## RLS hardening migration
 
@@ -37,8 +52,17 @@ the target project's current policies and schema before applying it, preferably
 to a staging project first. Do not apply it to production without a backup and
 explicit approval.
 
+`migrations/20261018000000_enforce_staff_mfa_and_audit_actor.sql` reapplies the
+staff AAL2 requirement and binds browser-written audit actor emails to the
+authenticated user's profile. Apply it after the RLS hardening migration and
+test both changes on staging.
+
 The policies use active `profiles.role` values, never user-editable
 `user_metadata`, for authorization. New Auth users are always patients.
+When applied, the hardened role helper requires an `aal2` Supabase Auth token
+for administrator and doctor access. The app prompts staff to enroll or verify
+a TOTP factor before showing staff pages, but the database check is the
+authorization boundary; test it with both `aal1` and `aal2` tokens on staging.
 Doctors can see patient profile rows associated with pending, confirmed, or
 completed appointments; access to vitals, medical records, and their files
 requires a confirmed/completed appointment or an assigned live/completed
@@ -68,7 +92,12 @@ Before using real patient data:
 - Review database grants, Auth MFA requirements for staff sessions, audit
   logging, backups, and the edge-function deployment separately.
 
-The admin invitation function checks MFA (AAL2) for invitations only. This app
-does not currently enforce MFA for every staff login. Compliance labels in the
-admin security screen are intentionally marked as not assessed; a qualified
-review is still required before making compliance claims.
+The app now gates doctor and administrator routes behind TOTP verification.
+Database access is also intended to require AAL2 through the hardened role
+helper, but that protection is not active until the migration is reviewed and
+applied to the target Supabase project. Test both the app route and direct
+database access on staging. The invitation Edge Function independently checks
+MFA (AAL2). The admin audit screen shows app-recorded administrator actions;
+it is not a Supabase Auth sign-in or failed-login event feed. Compliance labels
+remain not assessed; a qualified review is still required before making
+compliance claims.

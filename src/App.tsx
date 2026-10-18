@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import Index from "./pages/Index.tsx";
+import { StaffMfaRoute } from "@/components/StaffMfaRoute";
 
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const PatientDashboard = lazy(() => import("./pages/PatientDashboard.tsx"));
@@ -28,6 +29,7 @@ const AdminKnowledgeBase = lazy(() => import("./pages/admin/KnowledgeBase.tsx"))
 const AdminBroadcasts = lazy(() => import("./pages/admin/Broadcasts.tsx"));
 const AdminAuditLog = lazy(() => import("./pages/admin/AuditLog.tsx"));
 const Onboarding = lazy(() => import("./pages/Onboarding.tsx"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -46,20 +48,25 @@ const App = () => (
             <Route path="/patient/vitals" element={<PatientVitals />} />
             <Route path="/patient/appointments" element={<PatientAppointments />} />
             <Route path="/patient/integrations" element={<PatientIntegrations />} />
-            <Route path="/doctor" element={<DoctorDashboard />} />
-            <Route path="/doctor/consultations" element={<DoctorConsultations />} />
-            <Route path="/doctor/patients" element={<DoctorPatients />} />
-            <Route path="/doctor/schedule" element={<DoctorSchedule />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/appointments" element={<AdminAppointments />} />
-            <Route path="/admin/analytics" element={<AdminAnalytics />} />
-            <Route path="/admin/security" element={<AdminSecurity />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
-            <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
-            <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
-            <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+            <Route element={<StaffMfaRoute requiredRole="doctor" />}>
+              <Route path="/doctor" element={<DoctorDashboard />} />
+              <Route path="/doctor/consultations" element={<DoctorConsultations />} />
+              <Route path="/doctor/patients" element={<DoctorPatients />} />
+              <Route path="/doctor/schedule" element={<DoctorSchedule />} />
+            </Route>
+            <Route element={<StaffMfaRoute requiredRole="admin" />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/appointments" element={<AdminAppointments />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
+              <Route path="/admin/security" element={<AdminSecurity />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
+              <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
+              <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+            </Route>
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/accept-invite" element={<AcceptInvite />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
