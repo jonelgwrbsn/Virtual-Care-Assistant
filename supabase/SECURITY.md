@@ -1,5 +1,13 @@
 # Supabase security deployment notes
 
+## Browser configuration
+
+Copy `.env.example` to `.env.local` and set the project's URL and publishable
+key before running the application. Values prefixed with `VITE_` are embedded
+in the browser bundle and are public; never put a service-role key or other
+server secret in them. The application rejects missing configuration and
+non-HTTPS Supabase URLs (except local development URLs).
+
 ## Admin invitations
 
 The browser must never receive the Supabase service-role key. The `invite-user`

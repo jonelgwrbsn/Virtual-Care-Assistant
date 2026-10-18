@@ -1,9 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
+import { readSupabaseConfiguration } from "./supabase-config";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const configuration = readSupabaseConfiguration(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+);
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+if (configuration.ok === false) {
+  throw new Error(configuration.message);
+}
+
+export const supabase = createClient(configuration.url, configuration.publishableKey);
 
 export type Role = "patient" | "doctor" | "admin";
 

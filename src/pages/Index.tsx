@@ -68,7 +68,7 @@ const Index = () => {
       {/* Bottom marquee */}
       <footer className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between border-t border-white/5 px-6 py-2.5 text-[10px] uppercase tracking-[0.2em] text-white/40 sm:px-10">
         <span>© {new Date().getFullYear()} Virtual Care Assistant</span>
-        <span className="hidden sm:block">HIPAA aware · End-to-end encrypted · Clinician reviewed</span>
+        <span className="hidden sm:block">Non-emergency symptom guidance · Clinician escalation</span>
         <span>EN · US</span>
       </footer>
     </div>
