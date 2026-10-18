@@ -41,6 +41,29 @@ never deletes an account that has confirmed its email. Do not deploy the updated
 function before the migration exists. Validate the complete email redirect,
 password setup, expiry, resend, revoke, and audit behavior on staging first.
 
+## Admin account deletion
+
+The admin Users screen's delete action is permanent and limited to patient and
+doctor accounts. It requires an active admin session at AAL2 and typing
+`DELETE` in the confirmation dialog. The `delete-user` Edge Function records an
+audit event, disables the target first, removes their avatar and linked medical
+files from Storage, deletes the Auth identity, then calls
+`admin_delete_patient_or_doctor` to remove linked profile, appointments,
+consultations, messages, patient vitals/preferences, authored/owned medical
+records, and invitation records. It removes files in the account's own
+`avatars` and `medical-records` Storage folders. Audit history is intentionally
+retained.
+
+Apply `migrations/20261019010000_admin_delete_patient_doctor.sql` before
+deploying `delete-user` or the updated frontend. The function is transactional
+for relational cleanup; Storage and Auth operations are external services and
+cannot share a PostgreSQL transaction. If an external step fails, the function
+reports the partial state and keeps the account disabled so an administrator
+can retry. Verify cleanup behavior on staging with both patient and doctor
+accounts, including uploaded files and associated consultations, before
+production use. Permanent deletion may conflict with healthcare retention
+requirements; obtain the appropriate records/privacy approval first.
+
 ## RLS hardening migration
 
 `migrations/20261017000000_harden_patient_data_rls.sql` replaces the existing

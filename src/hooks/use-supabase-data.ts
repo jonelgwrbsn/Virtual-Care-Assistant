@@ -229,7 +229,7 @@ export function useAllAppointments(refetchKey = 0) {
 }
 
 // ── Admin: platform stats — efficient count-only queries ────
-export function useAdminStats() {
+export function useAdminStats(refetchKey = 0) {
   return useQuery(async () => {
     const [patientsRes, doctorsRes, adminsRes, apptsRes, pendingRes, cancelledRes, consultsRes, liveRes] =
       await Promise.all([
@@ -267,7 +267,7 @@ export function useAdminStats() {
       totalConsults:     consultsRes.count ?? 0,
       liveConsults:      liveRes.count ?? 0,
     };
-  }, []);
+  }, [refetchKey]);
 }
 
 // ── Admin: analytics — per-day consultation counts ─────────
@@ -331,6 +331,24 @@ export async function setUserActive(id: string, is_active: boolean) {
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
+}
+
+// ── Admin: permanently delete a patient or doctor and linked data ──
+export async function deleteUserAccount(id: string) {
+  const { data, error } = await supabase.functions.invoke("delete-user", {
+    body: { user_id: id },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  if (data?.deleted !== true) throw new Error("The account deletion could not be confirmed.");
+  return data.cleanup as {
+    deleted_messages: number;
+    deleted_medical_records: number;
+    deleted_consultations: number;
+    deleted_appointments: number;
+    deleted_vitals: number;
+    deleted_preferences: number;
+  };
 }
 
 // ── Admin: reassign appointment doctor ─────────────────────

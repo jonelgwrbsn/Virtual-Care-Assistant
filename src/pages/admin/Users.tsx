@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatCard, SectionCard, StatCardSkeleton, SectionCardSkeleton } from "@/components/dashboard/Cards";
 import {
   Users, UserCog, Stethoscope, Shield, Plus, Search,
-  Eye, PowerOff, Power, Heart, FileText, Calendar,
+  Eye, PowerOff, Power, Heart, FileText, Calendar, Trash2,
   Lock, MessagesSquare, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   useAllUsers, useAdminStats, usePatientProfile, useDoctorProfile,
-  setUserActive, writeAuditLog,
+  setUserActive, deleteUserAccount, writeAuditLog,
 } from "@/hooks/use-supabase-data";
 import { InviteUserModal } from "@/components/InviteUserModal";
 import { InvitationManager } from "@/components/InvitationManager";
@@ -22,6 +22,13 @@ import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 
 type Tab = "patients" | "doctors";
+
+interface DeletableUser {
+  id: string;
+  full_name: string;
+  email: string;
+  role: "patient" | "doctor";
+}
 
 const statusBadge = (active: boolean) =>
   active
@@ -231,7 +238,7 @@ const DoctorProfileModal = ({ id, onClose }: { id: string; onClose: () => void }
 };
 
 /* ── user row ── */
-const UserRow = ({ u, onView, onToggle, toggling }: { u: any; onView: () => void; onToggle: () => void; toggling: boolean }) => (
+const UserRow = ({ u, onView, onToggle, onDelete, toggling, deleting }: { u: any; onView: () => void; onToggle: () => void; onDelete: () => void; toggling: boolean; deleting: boolean }) => (
   <tr className="hover:bg-accent/40">
     <td className="py-3 pr-4">
       <div className="flex items-center gap-2.5">
@@ -254,13 +261,24 @@ const UserRow = ({ u, onView, onToggle, toggling }: { u: any; onView: () => void
     </td>
     <td className="py-3">
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" title="View profile" onClick={onView}><Eye className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" title="View profile" aria-label={`View ${u.full_name}`} onClick={onView}><Eye className="h-4 w-4" /></Button>
         <Button
-          variant="ghost" size="icon" disabled={toggling} title={u.is_active === false ? "Activate" : "Deactivate"}
+          variant="ghost" size="icon" disabled={toggling || deleting} title={u.is_active === false ? "Activate" : "Deactivate"} aria-label={`${u.is_active === false ? "Activate" : "Deactivate"} ${u.full_name}`}
           onClick={onToggle}
           className={u.is_active === false ? "text-success hover:text-success hover:bg-success/10" : "text-destructive hover:text-destructive hover:bg-destructive/10"}
         >
           {toggling ? <Loader2 className="h-4 w-4 animate-spin" /> : u.is_active === false ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={toggling || deleting}
+          title={`Permanently delete ${u.full_name}`}
+          aria-label={`Delete ${u.full_name}`}
+          onClick={onDelete}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </Button>
       </div>
     </td>
@@ -272,7 +290,7 @@ const AdminUsers = () => {
   const adminSession = getSession();
   const [refetchKey, setRefetchKey] = useState(0);
   const { data: users,  loading: usersLoading } = useAllUsers(refetchKey);
-  const { data: stats, loading: statsLoading, error: statsError } = useAdminStats();
+  const { data: stats, loading: statsLoading, error: statsError } = useAdminStats(refetchKey);
 
   const [tab, setTab]             = useState<Tab>("patients");
   const [unlockedPatients, setUnlockedPatients] = useState(false);
@@ -280,6 +298,9 @@ const AdminUsers = () => {
   const [search, setSearch]       = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingUser, setDeletingUser] = useState<DeletableUser | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [patientProfileId, setPatientProfileId] = useState<string | null>(null);
   const [doctorProfileId,  setDoctorProfileId]  = useState<string | null>(null);
 
@@ -319,12 +340,89 @@ const AdminUsers = () => {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!deletingUser || deleteConfirmation !== "DELETE") return;
+    setDeletingId(deletingUser.id);
+    try {
+      const deletedData = await deleteUserAccount(deletingUser.id);
+      toast.success(`${deletingUser.full_name} permanently deleted`, {
+        description: `Removed ${deletedData.deleted_appointments} appointments, ${deletedData.deleted_consultations} consultations, ${deletedData.deleted_medical_records} medical records, and ${deletedData.deleted_vitals} vitals.`,
+      });
+      setPatientProfileId(null);
+      setDoctorProfileId(null);
+      setDeletingUser(null);
+      setDeleteConfirmation("");
+      setRefetchKey(key => key + 1);
+    } catch (error) {
+      console.error("Unable to delete user account:", error);
+      toast.error(error instanceof Error ? error.message : "Account deletion failed.");
+      setRefetchKey(key => key + 1);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const unlocked = tab === "patients" ? unlockedPatients : unlockedDoctors;
   const currentList = filterList(tab === "patients" ? patients : doctors);
 
   return (
     <DashboardLayout requiredRole="admin">
       <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} onInvited={() => setRefetchKey(k => k + 1)} />
+      <Dialog
+        open={deletingUser !== null}
+        onOpenChange={open => {
+          if (!open && deletingId === null) {
+            setDeletingUser(null);
+            setDeleteConfirmation("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Permanently delete account?</DialogTitle>
+          </DialogHeader>
+          {deletingUser && (
+            <div className="space-y-3 text-sm">
+              <p>
+                This permanently deletes <strong>{deletingUser.full_name}</strong> ({deletingUser.email}) and cannot be undone.
+              </p>
+              <p className="text-muted-foreground">
+                The account, appointments, consultations, messages, medical records, vitals, invitation records, and files stored in this account&apos;s storage folder will be removed. Audit history is retained.
+              </p>
+              <label htmlFor="confirm-account-delete" className="block font-medium">
+                Type DELETE to confirm
+              </label>
+              <Input
+                id="confirm-account-delete"
+                value={deleteConfirmation}
+                onChange={event => setDeleteConfirmation(event.target.value)}
+                autoComplete="off"
+                disabled={deletingId !== null}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeletingUser(null);
+                setDeleteConfirmation("");
+              }}
+              disabled={deletingId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleDeleteUser()}
+              disabled={deletingId !== null || deleteConfirmation !== "DELETE"}
+            >
+              {deletingId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {patientProfileId && <PatientProfileModal id={patientProfileId} onClose={() => setPatientProfileId(null)} />}
       {doctorProfileId  && <DoctorProfileModal  id={doctorProfileId}  onClose={() => setDoctorProfileId(null)} />}
 
@@ -405,8 +503,10 @@ const AdminUsers = () => {
                         key={u.id}
                         u={u}
                         toggling={togglingId === u.id}
+                        deleting={deletingId === u.id}
                         onView={() => tab === "patients" ? setPatientProfileId(u.id) : setDoctorProfileId(u.id)}
                         onToggle={() => handleToggleActive(u)}
+                        onDelete={() => { setDeletingUser(u); setDeleteConfirmation(""); }}
                       />
                     ))}
                     {currentList.length === 0 && (
