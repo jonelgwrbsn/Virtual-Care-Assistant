@@ -2,7 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { SectionCard, SectionCardSkeleton } from "@/components/dashboard/Cards";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useDoctorPatients, usePatientProfile } from "@/hooks/use-supabase-data";
+import { useDoctorPatients, useDoctorDataRefresh, usePatientProfile } from "@/hooks/use-supabase-data";
 import { Avatar } from "@/components/AvatarUpload";
 import { format, formatDistanceToNow } from "date-fns";
 import { useEffect, useState } from "react";
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 const statusConfig = (status: string) => {
   switch (status) {
+    case "ai":         return { label: "AI triage",   color: "bg-secondary/15 text-secondary" };
+    case "live":       return { label: "In progress", color: "bg-primary/15 text-primary" };
     case "confirmed": return { label: "Active",      color: "bg-success/15 text-success" };
     case "pending":   return { label: "Pending",     color: "bg-warning/15 text-warning" };
     case "completed": return { label: "Stable",      color: "bg-success/15 text-success" };
@@ -21,7 +23,8 @@ const statusConfig = (status: string) => {
 };
 
 const Patients = () => {
-  const { data: patients, loading } = useDoctorPatients();
+  const { refetchKey } = useDoctorDataRefresh();
+  const { data: patients, loading, error } = useDoctorPatients(refetchKey);
   const [search, setSearch] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedPatientId = searchParams.get("patient");
@@ -54,6 +57,10 @@ const Patients = () => {
 
       {loading ? (
         <SectionCardSkeleton rows={6} />
+      ) : error ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Could not load patient activity: {error}
+        </p>
       ) : (
         <SectionCard
           title={`${filtered.length} patient${filtered.length !== 1 ? "s" : ""}`}

@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
+import { addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 
 const DEMO_ACCOUNT_EMAIL_PATTERN = "%@demo.vca";
+
+function firstRelated<T>(relation: T | T[] | null | undefined): T | null {
+  return Array.isArray(relation) ? relation[0] ?? null : relation ?? null;
+}
 
 // ── generic loader — stable fetcher ref prevents infinite loops ──
 function useQuery<T>(fetcher: () => Promise<T>, deps: unknown[] = []) {
@@ -117,8 +121,9 @@ export function usePatientConsultations() {
 export function useDoctorQueue(refetchKey = 0) {
   const session = getSession();
   return useQuery(async () => {
-    if (!session) return { appointments: [], pendingCount: 0, confirmedTodayCount: 0 };
-    const [requestsRes, todayRes] = await Promise.all([
+    if (!session) return { appointments: [], pendingCount: 0, confirmedTodayCount: 0, confirmedUpcomingCount: 0 };
+    const today = new Date();
+    const [requestsRes, todayRes, upcomingRes] = await Promise.all([
       supabase
         .from("appointments")
         .select(`id, scheduled_at, mode, status, notes, patient:patient_id ( id, full_name, created_at )`, { count: "exact" })
@@ -135,14 +140,34 @@ export function useDoctorQueue(refetchKey = 0) {
         .lte("scheduled_at", endOfDay(new Date()).toISOString())
         .order("scheduled_at", { ascending: true })
         .limit(20),
+      supabase
+        .from("appointments")
+        .select(`id, scheduled_at, mode, status, notes, patient:patient_id ( id, full_name, created_at )`, { count: "exact" })
+        .eq("doctor_id", session.id)
+        .eq("status", "confirmed")
+        .gt("scheduled_at", endOfDay(today).toISOString())
+        .lte("scheduled_at", endOfDay(addDays(today, 6)).toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(20),
     ]);
     if (requestsRes.error) throw requestsRes.error;
     if (todayRes.error) throw todayRes.error;
+    if (upcomingRes.error) throw upcomingRes.error;
+    const appointments = [
+      ...(requestsRes.data ?? []),
+      ...(todayRes.data ?? []),
+      ...(upcomingRes.data ?? []),
+    ]
+      .map(appointment => ({
+        ...appointment,
+        patient: firstRelated(appointment.patient),
+      }))
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
     return {
-      appointments: [...(requestsRes.data ?? []), ...(todayRes.data ?? [])]
-        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()),
+      appointments,
       pendingCount: requestsRes.count ?? 0,
       confirmedTodayCount: todayRes.count ?? 0,
+      confirmedUpcomingCount: (todayRes.count ?? 0) + (upcomingRes.count ?? 0),
     };
   }, [session?.id, refetchKey]);
 }
@@ -159,7 +184,11 @@ export function useLiveConsultations(refetchKey = 0) {
       .eq("status", "live")
       .order("started_at", { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).map(consultation => ({
+      ...consultation,
+      patient: firstRelated(consultation.patient),
+      appointment: firstRelated(consultation.appointment),
+    }));
   }, [session?.id, refetchKey]);
 }
 
@@ -177,7 +206,11 @@ export function useCompletedConsultations(refetchKey = 0) {
       .lte("ended_at", endOfDay(new Date()).toISOString())
       .order("ended_at", { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).map(consultation => ({
+      ...consultation,
+      patient: firstRelated(consultation.patient),
+      appointment: firstRelated(consultation.appointment),
+    }));
   }, [session?.id, refetchKey]);
 }
 
@@ -194,7 +227,10 @@ export function useDoctorAiConsultations(refetchKey = 0) {
       .lte("started_at", endOfDay(new Date()).toISOString())
       .order("started_at", { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).map(consultation => ({
+      ...consultation,
+      patient: firstRelated(consultation.patient),
+    }));
   }, [session?.id, refetchKey]);
 }
 
@@ -220,26 +256,45 @@ export function useDoctorDataRefresh() {
 }
 
 // ── Doctor: all patients (deduplicated from appointments) ───
-export function useDoctorPatients() {
+export function useDoctorPatients(refetchKey = 0) {
   const session = getSession();
   return useQuery(async () => {
     if (!session) return [];
-    const { data, error } = await supabase
-      .from("appointments")
-      .select(`patient:patient_id ( id, full_name, created_at, avatar_url ), scheduled_at, status`)
-      .eq("doctor_id", session.id)
-      .order("scheduled_at", { ascending: false });
-    if (error) throw error;
+    const [appointmentsRes, consultationsRes] = await Promise.all([
+      supabase
+        .from("appointments")
+        .select(`patient:patient_id ( id, full_name, created_at, avatar_url ), scheduled_at, status`)
+        .eq("doctor_id", session.id)
+        .order("scheduled_at", { ascending: false }),
+      supabase
+        .from("consultations")
+        .select(`patient:patient_id ( id, full_name, created_at, avatar_url ), started_at, status`)
+        .in("status", ["ai", "live", "completed"])
+        .order("started_at", { ascending: false }),
+    ]);
+    if (appointmentsRes.error) throw appointmentsRes.error;
+    if (consultationsRes.error) throw consultationsRes.error;
+
     const seen = new Set<string>();
     const patients: Array<{ id: string; full_name: string; lastVisit: string; lastStatus: string; avatar_url: string | null }> = [];
-    for (const row of data ?? []) {
-      const p = row.patient?.[0];
-      if (!p || seen.has(p.id)) continue;
-      seen.add(p.id);
-      patients.push({ id: p.id, full_name: p.full_name, lastVisit: row.scheduled_at, lastStatus: row.status, avatar_url: p.avatar_url ?? null });
+    const activityRows = [
+      ...(appointmentsRes.data ?? []).map(row => ({ ...row, patient: firstRelated(row.patient), activityAt: row.scheduled_at })),
+      ...(consultationsRes.data ?? []).map(row => ({ ...row, patient: firstRelated(row.patient), activityAt: row.started_at })),
+    ].sort((a, b) => new Date(b.activityAt).getTime() - new Date(a.activityAt).getTime());
+    for (const row of activityRows) {
+      const patient = row.patient;
+      if (!patient || seen.has(patient.id)) continue;
+      seen.add(patient.id);
+      patients.push({
+        id: patient.id,
+        full_name: patient.full_name,
+        lastVisit: row.activityAt,
+        lastStatus: row.status,
+        avatar_url: patient.avatar_url ?? null,
+      });
     }
     return patients;
-  }, [session?.id]);
+  }, [session?.id, refetchKey]);
 }
 
 // ── Doctor: full-week schedule ──────────────────────────────

@@ -8,6 +8,7 @@ import {
   useLiveConsultations,
   useCompletedConsultations,
   useDoctorAiConsultations,
+  useDoctorPatients,
   useDoctorDataRefresh,
   updateDoctorAppointmentStatus,
 } from "@/hooks/use-supabase-data";
@@ -24,14 +25,16 @@ const priorityConfig = (status: string, scheduledAt: string) => {
 
 const DoctorDashboard = () => {
   const { refetchKey, refresh } = useDoctorDataRefresh();
-  const { data: queueData, loading: queueLoading }    = useDoctorQueue(refetchKey);
-  const { data: live,      loading: liveLoading }      = useLiveConsultations(refetchKey);
-  const { data: completed, loading: completedLoading } = useCompletedConsultations(refetchKey);
-  const { data: aiConsultations, loading: aiConsultationsLoading } = useDoctorAiConsultations(refetchKey);
+  const { data: queueData, loading: queueLoading, error: queueError } = useDoctorQueue(refetchKey);
+  const { data: live, loading: liveLoading, error: liveError } = useLiveConsultations(refetchKey);
+  const { data: completed, loading: completedLoading, error: completedError } = useCompletedConsultations(refetchKey);
+  const { data: aiConsultations, loading: aiConsultationsLoading, error: aiConsultationsError } = useDoctorAiConsultations(refetchKey);
+  const { data: patients, loading: patientsLoading, error: patientsError } = useDoctorPatients(refetchKey);
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState<string | null>(null);
 
   const queue = queueData?.appointments ?? [];
-  const loading = queueLoading || liveLoading || completedLoading || aiConsultationsLoading;
+  const loading = queueLoading || liveLoading || completedLoading || aiConsultationsLoading || patientsLoading;
+  const dataError = [queueError, liveError, completedError, aiConsultationsError, patientsError].find(Boolean);
 
   const urgentCount = queue.filter(a => {
     const mins = (new Date(a.scheduled_at).getTime() - Date.now()) / 60000;
@@ -58,15 +61,21 @@ const DoctorDashboard = () => {
         <h1 className="font-display text-3xl font-bold tracking-tight">Today's queue</h1>
       </div>
 
+      {dataError && (
+        <p role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Some doctor records could not be loaded. Counts may be incomplete: {dataError}
+        </p>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)}
         </div>
       ) : (
         <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-5">
-          <StatCard icon={Users}        label="Appointments today" value={queueData?.confirmedTodayCount ?? 0} trend={`${urgentCount} urgent`} accent="primary" />
+          <StatCard icon={Users}        label="Patients" value={patients?.length ?? 0} trend="On your roster" accent="primary" />
           <StatCard icon={MessagesSquare} label="Live sessions"   value={live?.length ?? 0}        trend="Active now"                    accent="secondary" />
-          <StatCard icon={ClipboardList} label="Completed today"  value={completed?.length ?? 0}   trend="consultations"                 accent="success" />
+          <StatCard icon={ClipboardList} label="Appointments (7 days)" value={queueData?.confirmedUpcomingCount ?? 0} trend={`${queueData?.confirmedTodayCount ?? 0} today`} accent="success" />
           <StatCard icon={AlertCircle}   label="Pending review"   value={queueData?.pendingCount ?? 0} trend="Needs confirmation" accent="warning" />
           <StatCard icon={MessagesSquare} label="Patient chats" value={aiConsultations?.length ?? 0} trend="AI triage today" accent="secondary" />
         </div>
@@ -79,7 +88,7 @@ const DoctorDashboard = () => {
         </div>
       ) : (
         <div className="mt-6 grid gap-5 lg:grid-cols-3">
-          <SectionCard title="Today's queue & appointment requests" className="lg:col-span-2" action={
+          <SectionCard title="Upcoming appointments & requests" className="lg:col-span-2" action={
             <Button asChild variant="ghost" size="sm" className="gap-1.5"><Link to="/doctor/schedule"><Calendar className="h-3.5 w-3.5" /> View schedule</Link></Button>
           }>
             {queue.length > 0 ? (
@@ -96,7 +105,7 @@ const DoctorDashboard = () => {
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {queue.map(a => {
-                      const patient = a.patient?.[0];
+                      const patient = a.patient;
                       const initials = patient?.full_name?.split(" ").map((s: string) => s[0]).join("") ?? "?";
                       const priority = priorityConfig(a.status, a.scheduled_at);
                       return (
@@ -178,7 +187,7 @@ const DoctorDashboard = () => {
             <div className="space-y-3">
               {completed && completed.length > 0 ? (
                 completed.slice(0, 3).map(c => {
-                  const patient = c.patient?.[0];
+                  const patient = c.patient;
                   return (
                     <div key={c.id} className="rounded-xl border border-border/60 bg-background/60 p-3">
                       <div className="mb-1 h-1 w-8 rounded-full bg-primary" />

@@ -13,10 +13,11 @@ import { formatDistanceToNow, format } from "date-fns";
 
 const Consultations = () => {
   const { refetchKey } = useDoctorDataRefresh();
-  const { data: live,      loading: liveLoading }      = useLiveConsultations(refetchKey);
-  const { data: completed, loading: completedLoading } = useCompletedConsultations(refetchKey);
-  const { data: aiConsultations, loading: aiConsultationsLoading } = useDoctorAiConsultations(refetchKey);
+  const { data: live, loading: liveLoading, error: liveError } = useLiveConsultations(refetchKey);
+  const { data: completed, loading: completedLoading, error: completedError } = useCompletedConsultations(refetchKey);
+  const { data: aiConsultations, loading: aiConsultationsLoading, error: aiConsultationsError } = useDoctorAiConsultations(refetchKey);
   const loading = liveLoading || completedLoading || aiConsultationsLoading;
+  const dataError = [liveError, completedError, aiConsultationsError].find(Boolean);
 
   const completedWithDuration = (completed ?? []).filter(c => c.ended_at);
   const avgDuration = completedWithDuration.length > 0
@@ -31,6 +32,12 @@ const Consultations = () => {
         <p className="text-sm text-muted-foreground">Doctor portal</p>
         <h1 className="font-display text-3xl font-bold tracking-tight">Consultations</h1>
       </div>
+
+      {dataError && (
+        <p role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          Some consultation records could not be loaded. Counts may be incomplete: {dataError}
+        </p>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -54,9 +61,9 @@ const Consultations = () => {
             {live && live.length > 0 ? (
               <ul className="space-y-3">
                 {live.map(c => {
-                  const patient = c.patient?.[0];
+                  const patient = c.patient;
                   const initials = patient?.full_name?.split(" ").map((s: string) => s[0]).join("") ?? "?";
-                  const appt = c.appointment?.[0];
+                  const appt = c.appointment;
                   return (
                     <li key={c.id} className="flex items-center gap-4 rounded-xl border border-border/60 bg-background/60 p-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">
@@ -97,7 +104,7 @@ const Consultations = () => {
             {completed && completed.length > 0 ? (
               <ul className="divide-y divide-border/60">
                 {completed.map(c => {
-                  const patient = c.patient?.[0];
+                  const patient = c.patient;
                   return (
                     <li key={c.id} className="py-3">
                       <div className="flex items-center justify-between gap-2">
@@ -107,7 +114,7 @@ const Consultations = () => {
                         </Link>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {c.ended_at ? format(new Date(c.ended_at), "h:mm a") : "—"} · {c.appointment?.[0]?.notes ?? "Consultation"}
+                        {c.ended_at ? format(new Date(c.ended_at), "h:mm a") : "—"} · {c.appointment?.notes ?? "Consultation"}
                       </div>
                       {c.summary && (
                         <div className="mt-1 text-xs text-success line-clamp-1">{c.summary}</div>
@@ -131,7 +138,7 @@ const Consultations = () => {
             {aiConsultations && aiConsultations.length > 0 ? (
               <ul className="divide-y divide-border/60">
                 {aiConsultations.map(consultation => {
-                  const patient = consultation.patient?.[0];
+                  const patient = consultation.patient;
                   return (
                     <li key={consultation.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <div>
