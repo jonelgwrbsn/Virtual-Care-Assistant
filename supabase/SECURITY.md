@@ -55,14 +55,24 @@ records, and invitation records. It removes files in the account's own
 retained.
 
 Apply `migrations/20261019010000_admin_delete_patient_doctor.sql` before
-deploying `delete-user` or the updated frontend. The function is transactional
-for relational cleanup; Storage and Auth operations are external services and
-cannot share a PostgreSQL transaction. If an external step fails, the function
-reports the partial state and keeps the account disabled so an administrator
-can retry. Verify cleanup behavior on staging with both patient and doctor
-accounts, including uploaded files and associated consultations, before
-production use. Permanent deletion may conflict with healthcare retention
-requirements; obtain the appropriate records/privacy approval first.
+then apply `migrations/20261020010000_admin_delete_after_auth_cascade.sql`
+before deploying the updated `delete-user` Edge Function. The follow-up
+migration lets the cleanup RPC finish when deleting the Auth user has already
+cascade-deleted its profile, while using the role and email verified by the
+Edge Function. Deploy the function with:
+
+```powershell
+supabase functions deploy delete-user
+```
+
+The function is transactional for relational cleanup; Storage and Auth
+operations are external services and cannot share a PostgreSQL transaction. If
+an external step fails, the function reports the partial state and keeps the
+account disabled so an administrator can retry. Verify cleanup behavior on
+staging with both patient and doctor accounts, including uploaded files and
+associated consultations, before production use. Permanent deletion may
+conflict with healthcare retention requirements; obtain the appropriate
+records/privacy approval first.
 
 ## RLS hardening migration
 

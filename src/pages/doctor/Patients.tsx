@@ -143,18 +143,67 @@ const PatientProfileDialog = ({ patientId, onClose }: { patientId: string; onClo
             Couldn’t load this patient profile. Close the dialog and try again.
           </p>
         ) : data ? (
-          <div className="space-y-4">
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
             <div className="text-sm text-muted-foreground">{profile?.email}</div>
+            <section className="rounded-xl border border-border/60 p-3">
+              <h3 className="mb-2 text-sm font-semibold">Health background</h3>
+              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Known conditions</dt>
+                  <dd>{profile?.medical_conditions || "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Allergies</dt>
+                  <dd>{profile?.allergies || "Not recorded"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Blood type</dt>
+                  <dd>{profile?.blood_type || "Not recorded"}</dd>
+                </div>
+              </dl>
+            </section>
             <section className="rounded-xl border border-border/60 p-3">
               <h3 className="mb-2 text-sm font-semibold">Latest vitals</h3>
               {data.latestVitals ? (
-                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                  <span>Heart rate: {data.latestVitals.heart_rate ?? "—"} bpm</span>
-                  <span>Blood pressure: {data.latestVitals.systolic_bp ?? "—"}/{data.latestVitals.diastolic_bp ?? "—"}</span>
-                  <span>SpO₂: {data.latestVitals.spo2 ?? "—"}%</span>
-                  <span>Temperature: {data.latestVitals.body_temp ?? "—"}°C</span>
-                </div>
+                <>
+                  <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                    <span>Heart rate: {data.latestVitals.heart_rate ?? "—"} bpm</span>
+                    <span>Blood pressure: {data.latestVitals.systolic_bp ?? "—"}/{data.latestVitals.diastolic_bp ?? "—"}</span>
+                    <span>SpO₂: {data.latestVitals.spo2 ?? "—"}%</span>
+                    <span>Temperature: {data.latestVitals.body_temp ?? "—"}°C</span>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Recorded {data.latestVitals.recorded_at ? formatDistanceToNow(new Date(data.latestVitals.recorded_at), { addSuffix: true }) : "date unavailable"}
+                  </p>
+                </>
               ) : <p className="text-sm text-muted-foreground">No vitals recorded.</p>}
+            </section>
+            <section className="rounded-xl border border-border/60 p-3">
+              <h3 className="mb-2 text-sm font-semibold">Recent AI triage</h3>
+              {data.consultations.length > 0 ? (
+                <ul className="space-y-2 text-sm">
+                  {data.consultations.map((consultation: { id: string; started_at: string; summary: string | null }) => (
+                    <li key={consultation.id}>
+                      <span className="font-medium">Triage chat</span>
+                      <span className="text-muted-foreground"> · {format(new Date(consultation.started_at), "MMM d, yyyy h:mm a")}</span>
+                      {consultation.summary && <p className="text-muted-foreground">{consultation.summary}</p>}
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-muted-foreground">No AI triage sessions are available.</p>}
+              {data.recentMessages.length > 0 && (
+                <div className="mt-3 border-t border-border/60 pt-3">
+                  <h4 className="mb-1 text-xs font-semibold text-muted-foreground">Recent patient messages</h4>
+                  <ul className="space-y-2 text-sm">
+                    {data.recentMessages.map((message: { id: string; content: string; created_at: string }) => (
+                      <li key={message.id}>
+                        <p>{message.content}</p>
+                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
             <section className="rounded-xl border border-border/60 p-3">
               <h3 className="mb-2 text-sm font-semibold">Recent records</h3>
@@ -165,6 +214,19 @@ const PatientProfileDialog = ({ patientId, onClose }: { patientId: string; onClo
                   ))}
                 </ul>
               ) : <p className="text-sm text-muted-foreground">No records available.</p>}
+            </section>
+            <section className="rounded-xl border border-border/60 p-3">
+              <h3 className="mb-2 text-sm font-semibold">Recent appointments</h3>
+              {data.appointments.length > 0 ? (
+                <ul className="space-y-2 text-sm">
+                  {data.appointments.map((appointment: { id: string; scheduled_at: string; status: string; mode: string }) => (
+                    <li key={appointment.id} className="flex items-center justify-between gap-2">
+                      <span>{format(new Date(appointment.scheduled_at), "MMM d, yyyy h:mm a")} · {appointment.mode}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize">{appointment.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-muted-foreground">No appointments found.</p>}
             </section>
           </div>
         ) : (

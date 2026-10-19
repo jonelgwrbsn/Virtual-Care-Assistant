@@ -112,55 +112,109 @@ export function usePatientConsultations() {
 }
 
 // ── Doctor: patient queue — full day window ─────────────────
-export function useDoctorQueue() {
+export function useDoctorQueue(refetchKey = 0) {
   const session = getSession();
   return useQuery(async () => {
-    if (!session) return [];
-    const { data, error } = await supabase
-      .from("appointments")
-      .select(`id, scheduled_at, mode, status, notes, patient:patient_id ( id, full_name, created_at )`)
-      .eq("doctor_id", session.id)
-      .in("status", ["confirmed", "pending"])
-      .gte("scheduled_at", startOfDay(new Date()).toISOString())
-      .lte("scheduled_at", endOfDay(new Date()).toISOString())
-      .order("scheduled_at", { ascending: true })
-      .limit(20);
-    if (error) throw error;
-    return data ?? [];
-  }, [session?.id]);
+    if (!session) return { appointments: [], pendingCount: 0, confirmedTodayCount: 0 };
+    const [requestsRes, todayRes] = await Promise.all([
+      supabase
+        .from("appointments")
+        .select(`id, scheduled_at, mode, status, notes, patient:patient_id ( id, full_name, created_at )`, { count: "exact" })
+        .eq("doctor_id", session.id)
+        .eq("status", "pending")
+        .order("scheduled_at", { ascending: true })
+        .limit(20),
+      supabase
+        .from("appointments")
+        .select(`id, scheduled_at, mode, status, notes, patient:patient_id ( id, full_name, created_at )`, { count: "exact" })
+        .eq("doctor_id", session.id)
+        .eq("status", "confirmed")
+        .gte("scheduled_at", startOfDay(new Date()).toISOString())
+        .lte("scheduled_at", endOfDay(new Date()).toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(20),
+    ]);
+    if (requestsRes.error) throw requestsRes.error;
+    if (todayRes.error) throw todayRes.error;
+    return {
+      appointments: [...(requestsRes.data ?? []), ...(todayRes.data ?? [])]
+        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()),
+      pendingCount: requestsRes.count ?? 0,
+      confirmedTodayCount: todayRes.count ?? 0,
+    };
+  }, [session?.id, refetchKey]);
 }
 
 // ── Doctor: live consultations ──────────────────────────────
-export function useLiveConsultations() {
+export function useLiveConsultations(refetchKey = 0) {
   const session = getSession();
   return useQuery(async () => {
     if (!session) return [];
     const { data, error } = await supabase
       .from("consultations")
-      .select(`id, status, started_at, patient:patient_id ( full_name ), appointment:appointment_id ( mode, notes )`)
+      .select(`id, status, started_at, patient:patient_id ( id, full_name ), appointment:appointment_id ( id, mode, notes )`)
       .eq("doctor_id", session.id)
       .eq("status", "live")
       .order("started_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
-  }, [session?.id]);
+  }, [session?.id, refetchKey]);
 }
 
 // ── Doctor: completed consultations today ──────────────────
-export function useCompletedConsultations() {
+export function useCompletedConsultations(refetchKey = 0) {
   const session = getSession();
   return useQuery(async () => {
     if (!session) return [];
     const { data, error } = await supabase
       .from("consultations")
-      .select(`id, started_at, ended_at, summary, patient:patient_id ( full_name ), appointment:appointment_id ( notes )`)
+      .select(`id, started_at, ended_at, summary, patient:patient_id ( id, full_name ), appointment:appointment_id ( notes )`)
       .eq("doctor_id", session.id)
       .eq("status", "completed")
       .gte("ended_at", startOfDay(new Date()).toISOString())
+      .lte("ended_at", endOfDay(new Date()).toISOString())
       .order("ended_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
-  }, [session?.id]);
+  }, [session?.id, refetchKey]);
+}
+
+// ── Doctor: patient AI triage sessions ──────────────────────
+export function useDoctorAiConsultations(refetchKey = 0) {
+  const session = getSession();
+  return useQuery(async () => {
+    if (!session) return [];
+    const { data, error } = await supabase
+      .from("consultations")
+      .select("id, started_at, summary, patient:patient_id ( id, full_name )")
+      .eq("status", "ai")
+      .gte("started_at", startOfDay(new Date()).toISOString())
+      .lte("started_at", endOfDay(new Date()).toISOString())
+      .order("started_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }, [session?.id, refetchKey]);
+}
+
+export function useDoctorDataRefresh() {
+  const [refetchKey, setRefetchKey] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setRefetchKey(key => key + 1);
+    const channel = supabase
+      .channel("doctor-consultation-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "consultations" }, refresh)
+      .subscribe();
+    const interval = window.setInterval(refresh, 30_000);
+
+    return () => {
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { refetchKey, refresh: () => setRefetchKey(key => key + 1) };
 }
 
 // ── Doctor: all patients (deduplicated from appointments) ───
@@ -177,7 +231,7 @@ export function useDoctorPatients() {
     const seen = new Set<string>();
     const patients: Array<{ id: string; full_name: string; lastVisit: string; lastStatus: string; avatar_url: string | null }> = [];
     for (const row of data ?? []) {
-      const p = row.patient as any;
+      const p = row.patient?.[0];
       if (!p || seen.has(p.id)) continue;
       seen.add(p.id);
       patients.push({ id: p.id, full_name: p.full_name, lastVisit: row.scheduled_at, lastStatus: row.status, avatar_url: p.avatar_url ?? null });
@@ -322,6 +376,24 @@ export async function updateAppointmentStatus(id: string, status: string) {
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
+}
+
+export async function updateDoctorAppointmentStatus(
+  id: string,
+  status: "confirmed" | "cancelled" | "completed"
+) {
+  const session = getSession();
+  if (!session || session.role !== "doctor") throw new Error("A doctor session is required.");
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("doctor_id", session.id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Appointment not found or no longer assigned to you.");
 }
 
 // ── Admin: toggle user active status ───────────────────────
@@ -473,19 +545,33 @@ export async function writeAuditLog(actorId: string, actorEmail: string, action:
 export function usePatientProfile(patientId: string | null) {
   return useQuery(async () => {
     if (!patientId) return null;
-    const [profileRes, vitalsRes, recordsRes, apptsRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, role, created_at, is_active, avatar_url").eq("id", patientId).single(),
+    const [profileRes, vitalsRes, recordsRes, apptsRes, consultationsRes] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, email, role, created_at, is_active, avatar_url, allergies, medical_conditions, blood_type").eq("id", patientId).single(),
       supabase.from("vitals").select("*").eq("patient_id", patientId).order("recorded_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("medical_records").select("id, title, record_type, recorded_date").eq("patient_id", patientId).order("recorded_date", { ascending: false }).limit(5),
       supabase.from("appointments").select("id, scheduled_at, mode, status, doctor:doctor_id(full_name)").eq("patient_id", patientId).order("scheduled_at", { ascending: false }).limit(5),
+      supabase.from("consultations").select("id, status, started_at, summary").eq("patient_id", patientId).eq("status", "ai").order("started_at", { ascending: false }).limit(5),
     ]);
-    const queryError = [profileRes.error, vitalsRes.error, recordsRes.error, apptsRes.error].find(Boolean);
+    const queryError = [profileRes.error, vitalsRes.error, recordsRes.error, apptsRes.error, consultationsRes.error].find(Boolean);
     if (queryError) throw queryError;
+    const consultationIds = (consultationsRes.data ?? []).map(consultation => consultation.id);
+    const messagesRes = consultationIds.length > 0
+      ? await supabase
+        .from("messages")
+        .select("id, consultation_id, content, created_at")
+        .in("consultation_id", consultationIds)
+        .eq("role", "user")
+        .order("created_at", { ascending: false })
+        .limit(10)
+      : { data: [], error: null };
+    if (messagesRes.error) throw messagesRes.error;
     return {
       profile: profileRes.data,
       latestVitals: vitalsRes.data,
       records: recordsRes.data ?? [],
       appointments: apptsRes.data ?? [],
+      consultations: consultationsRes.data ?? [],
+      recentMessages: messagesRes.data ?? [],
     };
   }, [patientId]);
 }
@@ -508,7 +594,7 @@ export function useDoctorProfile(doctorId: string | null) {
         .limit(5),
     ]);
     const total   = apptsRes.data?.length ?? 0;
-    const completed = apptsRes.data?.filter((a: any) => a.status === "completed").length ?? 0;
+    const completed = apptsRes.data?.filter(a => a.status === "completed").length ?? 0;
     return {
       profile:      profileRes.data,
       appointments: apptsRes.data ?? [],

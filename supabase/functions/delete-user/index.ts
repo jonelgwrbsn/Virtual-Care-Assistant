@@ -226,7 +226,7 @@ Deno.serve(async (request) => {
 
   const { data: deletedData, error: cleanupError } = await adminClient.rpc(
     "admin_delete_patient_or_doctor",
-    { _user_id: target.id },
+    { _user_id: target.id, _target_email: target.email, _target_role: target.role },
   );
   if (cleanupError) {
     console.error("Auth account was removed but linked database cleanup failed:", cleanupError.message);
