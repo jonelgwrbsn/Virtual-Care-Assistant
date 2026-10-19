@@ -5,7 +5,7 @@ import { IntroSequence } from "@/components/IntroSequence";
 
 const Index = () => {
   return (
-    <div className="relative min-h-screen w-screen overflow-x-hidden bg-[hsl(210_40%_8%)] text-foreground">
+    <div className="relative min-h-screen w-screen overflow-x-hidden bg-[hsl(210_40%_8%)] text-foreground md:h-screen md:min-h-0 md:overflow-hidden">
       <IntroSequence />
       {/* Cinematic background layers */}
       <div className="pointer-events-none absolute inset-0">
@@ -40,7 +40,7 @@ const Index = () => {
       </header>
 
       {/* Stage */}
-      <main className="relative z-10 mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-4 px-4 pb-6 sm:px-6 md:grid-cols-[1.1fr_minmax(340px,0.9fr)] md:h-[calc(100vh-7rem)] lg:grid-cols-[1.2fr_minmax(380px,0.75fr)] lg:px-10">
+      <main className="relative z-10 mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-4 px-4 pb-6 sm:px-6 md:h-[calc(100svh-7rem)] md:min-h-0 md:grid-rows-1 md:grid-cols-[1.1fr_minmax(340px,0.9fr)] lg:grid-cols-[1.2fr_minmax(380px,0.75fr)] lg:px-10">
         {/* Left cinematic hero */}
         <section className="relative hidden h-full overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm md:block">
           <div className="dark h-full">
@@ -58,7 +58,7 @@ const Index = () => {
         </section>
 
         {/* Right auth — centered, no scroll */}
-        <section className="relative flex h-full items-center justify-center py-4 md:items-center">
+        <section className="relative flex h-full min-h-0 items-center justify-center py-4 md:py-2">
           <div className="w-full max-w-sm">
             <AuthPanel />
           </div>
@@ -66,7 +66,7 @@ const Index = () => {
       </main>
 
       {/* Bottom marquee */}
-      <footer className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between border-t border-white/5 px-6 py-2.5 text-[10px] uppercase tracking-[0.2em] text-white/40 sm:px-10">
+      <footer className="relative z-20 mt-4 flex items-center justify-between border-t border-white/5 px-6 py-2.5 text-[10px] uppercase tracking-[0.2em] text-white/40 sm:px-10 md:absolute md:inset-x-0 md:bottom-0 md:mt-0">
         <span>© {new Date().getFullYear()} Virtual Care Assistant</span>
         <span className="hidden sm:block">Non-emergency symptom guidance · Clinician escalation</span>
         <span>EN · US</span>

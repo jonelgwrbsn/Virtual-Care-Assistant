@@ -116,7 +116,7 @@ export const AuthPanel = () => {
             <Header title="Welcome back" subtitle="Sign in to your virtual care portal" />
             <ModeToggle mode={mode} setMode={setMode} />
 
-            <form onSubmit={submit} autoComplete="off" className="space-y-5">
+            <form onSubmit={submit} autoComplete="off" className="space-y-4">
               <FieldEmail email={email} setEmail={setEmail} inputId="login-email" />
               <FieldPassword id="login-password" label="Password" value={password} setValue={setPassword} show={showPw} setShow={setShowPw} />
 
@@ -152,15 +152,15 @@ export const AuthPanel = () => {
           aria-hidden={!isRegister}
         >
           <Card>
-            <Header title="Create your account" subtitle="Patient registration — staff accounts are provisioned by admin" />
+            <Header title="Create your account" subtitle="Create your patient account." />
             <ModeToggle mode={mode} setMode={setMode} />
 
-            <form onSubmit={submit} autoComplete="off" className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-sm font-medium text-slate-700">Full name</Label>
+            <form onSubmit={submit} autoComplete="off" className="space-y-1">
+              <div className="space-y-0.5">
+                <Label htmlFor="name" className="text-xs font-medium text-slate-700">Full name</Label>
                 <div className="relative">
                   <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" className="h-11 rounded-lg border-slate-200 bg-white pl-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20" autoComplete="name" />
+                  <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" className="h-10 rounded-lg border-slate-200 bg-white pl-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20" autoComplete="name" />
                 </div>
               </div>
 
@@ -168,12 +168,12 @@ export const AuthPanel = () => {
               <FieldPassword id="reg-password" label="Password" value={password} setValue={setPassword} show={showPw} setShow={setShowPw} compact showStrength />
               <FieldPassword id="reg-confirm" label="Confirm password" value={confirm} setValue={setConfirm} show={showPw2} setShow={setShowPw2} compact />
 
-              <div className="flex items-start gap-2.5 rounded-lg border border-primary/15 bg-primary/[0.06] px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-                <HeartPulse className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span>Creating a <strong className="font-semibold text-slate-800">patient</strong> account. Staff accounts are provisioned by an administrator.</span>
+              <div className="flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-[11px] leading-relaxed text-slate-600">
+                <HeartPulse className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                <span><strong className="font-semibold text-slate-800">Patient</strong> account. Staff access is provisioned by an administrator.</span>
               </div>
 
-              <Button type="submit" disabled={loading} className="group h-12 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_hsl(var(--primary)/0.7)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.8)]">
+              <Button type="submit" disabled={loading} className="group h-11 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_hsl(var(--primary)/0.7)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.8)] [@media(max-height:720px)]:h-10">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                   <> Create account <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /> </>
                 )}
@@ -229,10 +229,10 @@ export const AuthPanel = () => {
 /* ---------- subcomponents ---------- */
 
 const Card = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative w-full overflow-hidden rounded-2xl border border-white/70 bg-white p-6 text-slate-900 shadow-[0_32px_90px_-30px_rgba(2,20,34,0.72)] sm:p-8">
+  <div className="relative w-full overflow-hidden rounded-2xl border border-white/70 bg-white p-4 text-slate-900 shadow-[0_32px_90px_-30px_rgba(2,20,34,0.72)] [@media(max-height:720px)]:p-3">
     <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
     {children}
-    <div className="mt-5 flex items-center justify-center gap-2 border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">
+    <div className="mt-2 flex items-center justify-center gap-2 border-t border-slate-100 pt-2 text-[11px] font-medium text-slate-500 [@media(max-height:720px)]:hidden">
       <ShieldCheck className="h-4 w-4 text-primary" />
       <span>Secure access to your care account</span>
     </div>
@@ -240,29 +240,26 @@ const Card = ({ children }: { children: React.ReactNode }) => (
 );
 
 const Header = ({ title, subtitle }: { title: string; subtitle: string }) => (
-  <div className="mb-6">
-    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10">
-      <HeartPulse className="h-6 w-6" strokeWidth={2} />
-    </div>
-    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Virtual Care Portal</p>
-    <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900">{title}</h2>
-    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{subtitle}</p>
+  <div className="mb-3 [@media(max-height:720px)]:mb-2">
+    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Virtual Care Portal</p>
+    <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">{title}</h2>
+    <p className="mt-0.5 text-xs leading-relaxed text-slate-500 [@media(max-height:720px)]:hidden">{subtitle}</p>
   </div>
 );
 
 const ModeToggle = ({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) => (
-  <div className="relative mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1 text-sm font-semibold" role="group" aria-label="Choose sign-in or registration">
+  <div className="relative mb-2 grid grid-cols-2 rounded-lg bg-slate-100 p-1 text-sm font-semibold" role="group" aria-label="Choose sign-in or registration">
     <button
       type="button"
       onClick={() => setMode("login")}
       aria-pressed={mode === "login"}
-      className={`relative z-10 rounded-md py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${mode === "login" ? "text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
+      className={`relative z-10 rounded-md py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${mode === "login" ? "text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
     >Sign in</button>
     <button
       type="button"
       onClick={() => setMode("register")}
       aria-pressed={mode === "register"}
-      className={`relative z-10 rounded-md py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${mode === "register" ? "text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
+      className={`relative z-10 rounded-md py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${mode === "register" ? "text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
     >Register</button>
     <span
       aria-hidden="true"
@@ -273,8 +270,8 @@ const ModeToggle = ({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void 
 );
 
 const FieldEmail = ({ email, setEmail, compact, inputId = "email" }: { email: string; setEmail: (v: string) => void; compact?: boolean; inputId?: string }) => (
-  <div className="space-y-1.5">
-    <Label htmlFor={inputId} className="text-sm font-medium text-slate-700">Email address</Label>
+  <div className="space-y-0.5">
+    <Label htmlFor={inputId} className="text-xs font-medium text-slate-700">Email address</Label>
     <div className="relative">
       <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
       <Input
@@ -286,7 +283,7 @@ const FieldEmail = ({ email, setEmail, compact, inputId = "email" }: { email: st
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@hospital.com"
-        className={`${compact ? "h-11" : "h-12"} rounded-lg border-slate-200 bg-white pl-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20`}
+        className={`${compact ? "h-10" : "h-11"} rounded-lg border-slate-200 bg-white pl-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20 [@media(max-height:720px)]:h-9`}
       />
     </div>
   </div>
@@ -299,8 +296,8 @@ const FieldPassword = ({ id, label, value, setValue, show, setShow, compact, sho
   const meta = STRENGTH_META[strength];
 
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</Label>
+    <div className="space-y-0.5">
+      <Label htmlFor={id} className="text-xs font-medium text-slate-700">{label}</Label>
       <div className="relative">
         <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
@@ -311,7 +308,7 @@ const FieldPassword = ({ id, label, value, setValue, show, setShow, compact, sho
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="••••••••"
-          className={`${compact ? "h-11" : "h-12"} rounded-lg border-slate-200 bg-white pl-11 pr-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20`}
+          className={`${compact ? "h-10" : "h-11"} rounded-lg border-slate-200 bg-white pl-11 pr-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20 [@media(max-height:720px)]:h-9`}
         />
         <button type="button" aria-label={show ? "Hide password" : "Show password"} aria-pressed={show} onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-slate-400 transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -319,29 +316,19 @@ const FieldPassword = ({ id, label, value, setValue, show, setShow, compact, sho
       </div>
 
       {showStrength && value.length > 0 && (
-        <div className="space-y-2 pt-1">
-          <div className="flex gap-1">
-            {STRENGTH_META.map((s, i) => (
-              <div
-                key={i}
-                className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < strength ? meta.color : "bg-muted"}`}
-              />
-            ))}
+        <div className="space-y-1 pt-0.5">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 gap-1">
+              {STRENGTH_META.map((s, i) => (
+                <div
+                  key={i}
+                  className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < strength ? meta.color : "bg-muted"}`}
+                />
+              ))}
+            </div>
+            <span className={`shrink-0 text-[10px] font-semibold ${meta.color.replace("bg-", "text-")}`}>{meta.label}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold ${meta.color.replace("bg-", "text-")}`}>{meta.label}</span>
-          </div>
-          <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
-            {PW_RULES.map((rule) => {
-              const passed = rule.test(value);
-              return (
-                <li key={rule.label} className={`flex items-center gap-1.5 text-[11px] transition-colors ${passed ? "text-success" : "text-slate-500"}`}>
-                  <span className={`inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full ${passed ? "bg-success" : "bg-slate-300"}`} />
-                  {rule.label}
-                </li>
-              );
-            })}
-          </ul>
+          <p className="text-[10px] leading-tight text-slate-500">8+ characters with uppercase, lowercase, number &amp; symbol.</p>
         </div>
       )}
     </div>
