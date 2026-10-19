@@ -582,30 +582,81 @@ export function usePatientProfile(patientId: string | null) {
 
 // ── Admin: doctor full profile ─────────────────────────────
 export function useDoctorProfile(doctorId: string | null) {
-  return useQuery(async () => {
+  const [refetchKey, setRefetchKey] = useState(0);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRealtimeConnected(false);
+    setRealtimeError(null);
+    if (!doctorId) return;
+
+    const refresh = () => setRefetchKey(key => key + 1);
+    const channel = supabase
+      .channel(`admin-doctor-profile-${doctorId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `id=eq.${doctorId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `doctor_id=eq.${doctorId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "consultations", filter: `doctor_id=eq.${doctorId}` }, refresh)
+      .subscribe((status, error) => {
+        const connected = status === "SUBSCRIBED";
+        setRealtimeConnected(connected);
+        setRealtimeError(connected ? null : error?.message ?? null);
+      });
+    const interval = window.setInterval(refresh, 30_000);
+
+    return () => {
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+    };
+  }, [doctorId]);
+
+  const query = useQuery(async () => {
     if (!doctorId) return null;
-    const [profileRes, apptsRes, consultsRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, role, created_at, is_active, avatar_url").eq("id", doctorId).single(),
+    const [profileRes, appointmentsRes, completedRes, apptsRes, consultationsRes, liveConsultationsRes, consultsRes] = await Promise.all([
+      supabase.from("profiles")
+        .select("id, full_name, email, role, created_at, updated_at, is_active, avatar_url, phone, specialty, license_number, years_experience, bio, available_days, available_hours")
+        .eq("id", doctorId)
+        .single(),
+      supabase.from("appointments").select("id", { count: "exact", head: true }).eq("doctor_id", doctorId),
+      supabase.from("appointments").select("id", { count: "exact", head: true }).eq("doctor_id", doctorId).eq("status", "completed"),
       supabase.from("appointments")
         .select("id, scheduled_at, mode, status, patient:patient_id(full_name)")
         .eq("doctor_id", doctorId)
         .order("scheduled_at", { ascending: false })
         .limit(5),
+      supabase.from("consultations").select("id", { count: "exact", head: true }).eq("doctor_id", doctorId),
+      supabase.from("consultations").select("id", { count: "exact", head: true }).eq("doctor_id", doctorId).eq("status", "live"),
       supabase.from("consultations")
         .select("id, status, started_at, ended_at, summary, patient:patient_id(full_name)")
         .eq("doctor_id", doctorId)
         .order("started_at", { ascending: false })
         .limit(5),
     ]);
-    const total   = apptsRes.data?.length ?? 0;
-    const completed = apptsRes.data?.filter(a => a.status === "completed").length ?? 0;
+    const queryError = [
+      profileRes.error,
+      appointmentsRes.error,
+      completedRes.error,
+      apptsRes.error,
+      consultationsRes.error,
+      liveConsultationsRes.error,
+      consultsRes.error,
+    ].find(Boolean);
+    if (queryError) throw queryError;
+
     return {
       profile:      profileRes.data,
       appointments: apptsRes.data ?? [],
       consultations: consultsRes.data ?? [],
-      stats: { total, completed },
+      stats: {
+        totalAppointments: appointmentsRes.count ?? 0,
+        completedAppointments: completedRes.count ?? 0,
+        totalConsultations: consultationsRes.count ?? 0,
+        liveConsultations: liveConsultationsRes.count ?? 0,
+      },
     };
-  }, [doctorId]);
+  }, [doctorId, refetchKey]);
+
+  return { ...query, realtimeConnected, realtimeError };
 }
 
 // ── Patient: integration preferences ───────────────────────
