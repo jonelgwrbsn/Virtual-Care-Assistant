@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
-import { addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 
 const DEMO_ACCOUNT_EMAIL_PATTERN = "%@demo.vca";
 
@@ -146,7 +146,6 @@ export function useDoctorQueue(refetchKey = 0) {
         .eq("doctor_id", session.id)
         .eq("status", "confirmed")
         .gt("scheduled_at", endOfDay(today).toISOString())
-        .lte("scheduled_at", endOfDay(addDays(today, 6)).toISOString())
         .order("scheduled_at", { ascending: true })
         .limit(20),
     ]);

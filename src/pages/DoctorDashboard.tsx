@@ -34,7 +34,7 @@ const DoctorDashboard = () => {
 
   const queue = queueData?.appointments ?? [];
   const loading = queueLoading || liveLoading || completedLoading || aiConsultationsLoading || patientsLoading;
-  const dataError = [queueError, liveError, completedError, aiConsultationsError, patientsError].find(Boolean);
+  const dataError = [liveError, completedError, aiConsultationsError, patientsError].find(Boolean);
 
   const urgentCount = queue.filter(a => {
     const mins = (new Date(a.scheduled_at).getTime() - Date.now()) / 60000;
@@ -75,7 +75,7 @@ const DoctorDashboard = () => {
         <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-5">
           <StatCard icon={Users}        label="Patients" value={patients?.length ?? 0} trend="On your roster" accent="primary" />
           <StatCard icon={MessagesSquare} label="Live sessions"   value={live?.length ?? 0}        trend="Active now"                    accent="secondary" />
-          <StatCard icon={ClipboardList} label="Appointments (7 days)" value={queueData?.confirmedUpcomingCount ?? 0} trend={`${queueData?.confirmedTodayCount ?? 0} today`} accent="success" />
+          <StatCard icon={ClipboardList} label="Confirmed appointments" value={queueData?.confirmedUpcomingCount ?? 0} trend={`${queueData?.confirmedTodayCount ?? 0} today · all upcoming`} accent="success" />
           <StatCard icon={AlertCircle}   label="Pending review"   value={queueData?.pendingCount ?? 0} trend="Needs confirmation" accent="warning" />
           <StatCard icon={MessagesSquare} label="Patient chats" value={aiConsultations?.length ?? 0} trend="AI triage today" accent="secondary" />
         </div>
@@ -91,7 +91,12 @@ const DoctorDashboard = () => {
           <SectionCard title="Upcoming appointments & requests" className="lg:col-span-2" action={
             <Button asChild variant="ghost" size="sm" className="gap-1.5"><Link to="/doctor/schedule"><Calendar className="h-3.5 w-3.5" /> View schedule</Link></Button>
           }>
-            {queue.length > 0 ? (
+            {queueError ? (
+              <div role="alert" className="flex flex-col items-center gap-3 py-6 text-center">
+                <p className="text-sm text-destructive">Could not load your appointment queue: {queueError}</p>
+                <Button type="button" variant="outline" size="sm" onClick={refresh}>Retry</Button>
+              </div>
+            ) : queue.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -179,7 +184,20 @@ const DoctorDashboard = () => {
                 </table>
               </div>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">No appointments or pending requests.</p>
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Your queue is clear</p>
+                  <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                    Pending booking requests and confirmed appointments appear here. There are none right now; check your full schedule for other dates.
+                  </p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/doctor/schedule">Open full schedule</Link>
+                </Button>
+              </div>
             )}
           </SectionCard>
 
