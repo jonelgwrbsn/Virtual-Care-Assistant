@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowRight, HeartPulse } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowRight, HeartPulse, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -104,7 +104,7 @@ export const AuthPanel = () => {
     const isRegister = mode === "register";
 
     return (
-    <div className="relative w-full max-w-sm">
+    <div className="relative w-full max-w-[26rem]">
       {/* Single card — fades between login and register, no height clipping */}
       <div className="relative">
         {/* FRONT — Sign in */}
@@ -116,13 +116,13 @@ export const AuthPanel = () => {
             <Header title="Welcome back" subtitle="Sign in to your virtual care portal" />
             <ModeToggle mode={mode} setMode={setMode} />
 
-            <form onSubmit={submit} autoComplete="off" className="space-y-3">
+            <form onSubmit={submit} autoComplete="off" className="space-y-5">
               <FieldEmail email={email} setEmail={setEmail} inputId="login-email" />
               <FieldPassword id="login-password" label="Password" value={password} setValue={setPassword} show={showPw} setShow={setShowPw} />
 
-              <div className="flex items-center justify-between text-[11px]">
-                <label className="flex cursor-pointer items-center gap-2 font-medium text-foreground/70 hover:text-foreground transition-colors">
-                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-3.5 w-3.5 rounded border-border accent-primary" />
+              <div className="flex items-center justify-between text-[13px]">
+                <label className="flex cursor-pointer items-center gap-2 font-medium text-slate-600 transition-colors hover:text-slate-900">
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" />
                   Remember me
                 </label>
                 <button
@@ -131,13 +131,13 @@ export const AuthPanel = () => {
                     setForgotEmail(email);
                     setForgotOpen(true);
                   }}
-                  className="font-semibold text-primary hover:underline"
+                  className="font-semibold text-primary transition-colors hover:text-primary/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   Forgot password?
                 </button>
               </div>
 
-              <Button type="submit" disabled={loading} className="group h-10 w-full bg-gradient-primary text-white shadow-soft hover:shadow-glow transition-all hover:scale-[1.01]">
+              <Button type="submit" disabled={loading} className="group h-12 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_hsl(var(--primary)/0.7)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.8)]">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                   <> Sign in <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /> </>
                 )}
@@ -155,12 +155,12 @@ export const AuthPanel = () => {
             <Header title="Create your account" subtitle="Patient registration — staff accounts are provisioned by admin" />
             <ModeToggle mode={mode} setMode={setMode} />
 
-            <form onSubmit={submit} autoComplete="off" className="space-y-2">
-              <div className="space-y-1">
-                <Label htmlFor="name" className="text-xs font-semibold text-foreground">Full name</Label>
+            <form onSubmit={submit} autoComplete="off" className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-sm font-medium text-slate-700">Full name</Label>
                 <div className="relative">
-                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" className="h-9 pl-10" autoComplete="name" />
+                  <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" className="h-11 rounded-lg border-slate-200 bg-white pl-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20" autoComplete="name" />
                 </div>
               </div>
 
@@ -168,12 +168,12 @@ export const AuthPanel = () => {
               <FieldPassword id="reg-password" label="Password" value={password} setValue={setPassword} show={showPw} setShow={setShowPw} compact showStrength />
               <FieldPassword id="reg-confirm" label="Confirm password" value={confirm} setValue={setConfirm} show={showPw2} setShow={setShowPw2} compact />
 
-              <div className="flex items-start gap-2 rounded-md bg-primary/5 px-2 py-1.5 text-[10px] leading-snug text-foreground/70">
-                <HeartPulse className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
-                <span>Registered as <strong className="text-primary">Patient</strong>. Staff accounts are provisioned by admin.</span>
+              <div className="flex items-start gap-2.5 rounded-lg border border-primary/15 bg-primary/[0.06] px-3 py-2.5 text-xs leading-relaxed text-slate-600">
+                <HeartPulse className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>Creating a <strong className="font-semibold text-slate-800">patient</strong> account. Staff accounts are provisioned by an administrator.</span>
               </div>
 
-              <Button type="submit" disabled={loading} className="group h-9 w-full bg-gradient-primary text-white shadow-soft hover:shadow-glow transition-all hover:scale-[1.01]">
+              <Button type="submit" disabled={loading} className="group h-12 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-[0_8px_18px_-8px_hsl(var(--primary)/0.7)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_24px_-10px_hsl(var(--primary)/0.8)]">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                   <> Create account <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /> </>
                 )}
@@ -229,43 +229,54 @@ export const AuthPanel = () => {
 /* ---------- subcomponents ---------- */
 
 const Card = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative w-full rounded-xl bg-card p-4 text-card-foreground shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)] ring-1 ring-border">
-    <div className="absolute inset-x-0 -top-px mx-8 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+  <div className="relative w-full overflow-hidden rounded-2xl border border-white/70 bg-white p-6 text-slate-900 shadow-[0_32px_90px_-30px_rgba(2,20,34,0.72)] sm:p-8">
+    <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
     {children}
+    <div className="mt-5 flex items-center justify-center gap-2 border-t border-slate-100 pt-4 text-xs font-medium text-slate-500">
+      <ShieldCheck className="h-4 w-4 text-primary" />
+      <span>Secure access to your care account</span>
+    </div>
   </div>
 );
 
 const Header = ({ title, subtitle }: { title: string; subtitle: string }) => (
-  <div className="mb-2">
-    <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{title}</h2>
-    <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+  <div className="mb-6">
+    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10">
+      <HeartPulse className="h-6 w-6" strokeWidth={2} />
+    </div>
+    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Virtual Care Portal</p>
+    <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900">{title}</h2>
+    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{subtitle}</p>
   </div>
 );
 
 const ModeToggle = ({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) => (
-  <div className="relative mb-3 grid grid-cols-2 rounded-full bg-muted p-0.5 text-xs font-semibold">
+  <div className="relative mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1 text-sm font-semibold" role="group" aria-label="Choose sign-in or registration">
     <button
       type="button"
       onClick={() => setMode("login")}
-      className={`relative z-10 rounded-full py-1.5 transition-colors ${mode === "login" ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+      aria-pressed={mode === "login"}
+      className={`relative z-10 rounded-md py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${mode === "login" ? "text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
     >Sign in</button>
     <button
       type="button"
       onClick={() => setMode("register")}
-      className={`relative z-10 rounded-full py-1.5 transition-colors ${mode === "register" ? "text-white" : "text-muted-foreground hover:text-foreground"}`}
+      aria-pressed={mode === "register"}
+      className={`relative z-10 rounded-md py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${mode === "register" ? "text-slate-900" : "text-slate-500 hover:text-slate-800"}`}
     >Register</button>
     <span
-      className="absolute top-0.5 bottom-0.5 w-[calc(50%-0.125rem)] rounded-full bg-gradient-primary shadow-soft transition-transform duration-500 ease-out"
-      style={{ transform: mode === "login" ? "translateX(0.125rem)" : "translateX(calc(100% + 0.125rem))" }}
+      aria-hidden="true"
+      className="absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-md bg-white shadow-sm ring-1 ring-slate-200/70 transition-transform duration-300 ease-out"
+      style={{ transform: mode === "login" ? "translateX(0)" : "translateX(100%)" }}
     />
   </div>
 );
 
 const FieldEmail = ({ email, setEmail, compact, inputId = "email" }: { email: string; setEmail: (v: string) => void; compact?: boolean; inputId?: string }) => (
-  <div className="space-y-1">
-    <Label htmlFor={inputId} className="text-xs font-semibold text-foreground">Email</Label>
+  <div className="space-y-1.5">
+    <Label htmlFor={inputId} className="text-sm font-medium text-slate-700">Email address</Label>
     <div className="relative">
-      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
       <Input
         id={inputId}
         name={inputId}
@@ -275,7 +286,7 @@ const FieldEmail = ({ email, setEmail, compact, inputId = "email" }: { email: st
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@hospital.com"
-        className={`${compact ? "h-9" : "h-10"} pl-10`}
+        className={`${compact ? "h-11" : "h-12"} rounded-lg border-slate-200 bg-white pl-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20`}
       />
     </div>
   </div>
@@ -288,10 +299,10 @@ const FieldPassword = ({ id, label, value, setValue, show, setShow, compact, sho
   const meta = STRENGTH_META[strength];
 
   return (
-    <div className="space-y-1">
-      <Label htmlFor={id} className="text-xs font-semibold text-foreground">{label}</Label>
+    <div className="space-y-1.5">
+      <Label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</Label>
       <div className="relative">
-        <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
           id={id}
           name={id}
@@ -300,15 +311,15 @@ const FieldPassword = ({ id, label, value, setValue, show, setShow, compact, sho
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="••••••••"
-          className={`${compact ? "h-9" : "h-10"} pl-10 pr-10`}
+          className={`${compact ? "h-11" : "h-12"} rounded-lg border-slate-200 bg-white pl-11 pr-11 text-sm shadow-sm transition-colors placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-primary focus-visible:ring-primary/20`}
         />
-        <button type="button" aria-label={show ? "Hide password" : "Show password"} onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+        <button type="button" aria-label={show ? "Hide password" : "Show password"} aria-pressed={show} onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-slate-400 transition-colors hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
 
       {showStrength && value.length > 0 && (
-        <div className="space-y-1.5 pt-0.5">
+        <div className="space-y-2 pt-1">
           <div className="flex gap-1">
             {STRENGTH_META.map((s, i) => (
               <div
@@ -318,14 +329,14 @@ const FieldPassword = ({ id, label, value, setValue, show, setShow, compact, sho
             ))}
           </div>
           <div className="flex items-center justify-between">
-            <span className={`text-[10px] font-semibold ${meta.color.replace("bg-", "text-")}`}>{meta.label}</span>
+            <span className={`text-xs font-semibold ${meta.color.replace("bg-", "text-")}`}>{meta.label}</span>
           </div>
-          <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+          <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
             {PW_RULES.map((rule) => {
               const passed = rule.test(value);
               return (
-                <li key={rule.label} className={`flex items-center gap-1 text-[10px] transition-colors ${passed ? "text-success" : "text-muted-foreground"}`}>
-                  <span className={`inline-block h-1.5 w-1.5 rounded-full flex-shrink-0 ${passed ? "bg-success" : "bg-muted-foreground/40"}`} />
+                <li key={rule.label} className={`flex items-center gap-1.5 text-[11px] transition-colors ${passed ? "text-success" : "text-slate-500"}`}>
+                  <span className={`inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full ${passed ? "bg-success" : "bg-slate-300"}`} />
                   {rule.label}
                 </li>
               );
