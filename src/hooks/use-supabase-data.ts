@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 
+const DEMO_ACCOUNT_EMAIL_PATTERN = "%@demo.vca";
+
 // ── generic loader — stable fetcher ref prevents infinite loops ──
 function useQuery<T>(fetcher: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -263,6 +265,7 @@ export function useAllUsers(refetchKey = 0) {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, email, role, created_at, is_active, avatar_url")
+      .not("email", "ilike", DEMO_ACCOUNT_EMAIL_PATTERN)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data ?? [];
@@ -287,9 +290,9 @@ export function useAdminStats(refetchKey = 0) {
   return useQuery(async () => {
     const [patientsRes, doctorsRes, adminsRes, apptsRes, pendingRes, cancelledRes, consultsRes, liveRes] =
       await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "patient"),
-        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "doctor"),
-        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "admin"),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "patient").not("email", "ilike", DEMO_ACCOUNT_EMAIL_PATTERN),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "doctor").not("email", "ilike", DEMO_ACCOUNT_EMAIL_PATTERN),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "admin").not("email", "ilike", DEMO_ACCOUNT_EMAIL_PATTERN),
         supabase.from("appointments").select("*", { count: "exact", head: true }),
         supabase.from("appointments").select("*", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("appointments").select("*", { count: "exact", head: true }).eq("status", "cancelled"),
@@ -440,6 +443,7 @@ export function useAllDoctors(refetchKey = 0) {
       .select("id, full_name, email")
       .eq("role", "doctor")
       .eq("is_active", true)
+      .not("email", "ilike", DEMO_ACCOUNT_EMAIL_PATTERN)
       .order("full_name");
     if (error) throw error;
     return data ?? [];
