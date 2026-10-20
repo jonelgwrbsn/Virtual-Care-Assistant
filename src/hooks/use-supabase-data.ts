@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
+import { splitPatientAppointments } from "@/lib/patient-appointments";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 
 const DEMO_ACCOUNT_EMAIL_PATTERN = "%@demo.vca";
@@ -75,14 +76,7 @@ export function usePatientAppointments(refetchKey = 0) {
       .eq("patient_id", session.id)
       .order("scheduled_at", { ascending: true });
     if (error) throw error;
-    const now = new Date();
-    const upcoming = (data ?? []).filter(
-      (a) => new Date(a.scheduled_at) >= now && a.status !== "cancelled"
-    );
-    const past = (data ?? []).filter(
-      (a) => new Date(a.scheduled_at) < now || a.status === "completed"
-    );
-    return { upcoming, past };
+    return splitPatientAppointments(data ?? []);
   }, [session?.id, refetchKey]);
 }
 
