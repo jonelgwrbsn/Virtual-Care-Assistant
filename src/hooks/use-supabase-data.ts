@@ -69,7 +69,7 @@ export function useVitalsHistory(refetchKey = 0) {
 export function usePatientAppointments(refetchKey = 0) {
   const session = getSession();
   return useQuery(async () => {
-    if (!session) return { upcoming: [], past: [] };
+    if (!session) return { upcoming: [], past: [], declined: [] };
     const { data, error } = await supabase
       .from("appointments")
       .select(`id, scheduled_at, mode, status, notes, doctor:doctor_id ( full_name, email )`)

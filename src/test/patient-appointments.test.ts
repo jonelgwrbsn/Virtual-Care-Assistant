@@ -11,6 +11,7 @@ describe("patient appointment lists", () => {
       { id: "confirmed-past", scheduled_at: "2026-10-19T10:00:00.000Z", status: "confirmed" },
       { id: "confirmed-future", scheduled_at: "2026-10-21T10:00:00.000Z", status: "confirmed" },
       { id: "cancelled", scheduled_at: "2026-10-21T10:00:00.000Z", status: "cancelled" },
+      { id: "declined-past", scheduled_at: "2026-10-18T10:00:00.000Z", status: "cancelled" },
       { id: "completed", scheduled_at: "2026-10-21T10:00:00.000Z", status: "completed" },
     ];
 
@@ -18,5 +19,6 @@ describe("patient appointment lists", () => {
 
     expect(result.upcoming.map(({ id }) => id)).toEqual(["pending-past", "pending-future", "confirmed-future"]);
     expect(result.past.map(({ id }) => id)).toEqual(["confirmed-past", "completed"]);
+    expect(result.declined.map(({ id }) => id)).toEqual(["cancelled", "declined-past"]);
   });
 });

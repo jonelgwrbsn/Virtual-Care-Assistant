@@ -7,6 +7,7 @@ export function splitPatientAppointments<T extends PatientAppointmentSchedule>(
   appointments: readonly T[],
   now = new Date(),
 ) {
+  const declined = appointments.filter((appointment) => appointment.status === "cancelled");
   const upcoming = appointments.filter((appointment) => {
     if (appointment.status === "pending") return true;
     if (appointment.status === "cancelled" || appointment.status === "completed") return false;
@@ -18,5 +19,5 @@ export function splitPatientAppointments<T extends PatientAppointmentSchedule>(
     return new Date(appointment.scheduled_at) < now;
   });
 
-  return { upcoming, past };
+  return { upcoming, past, declined };
 }

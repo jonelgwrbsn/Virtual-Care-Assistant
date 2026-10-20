@@ -16,6 +16,8 @@ const statusColor: Record<string, string> = {
   completed: "text-muted-foreground bg-muted",
 };
 
+type PatientAppointment = NonNullable<ReturnType<typeof usePatientAppointments>["data"]>["upcoming"][number];
+
 const Appointments = () => {
   const [bookOpen, setBookOpen] = useState(false);
   // refetch trigger
@@ -23,6 +25,7 @@ const Appointments = () => {
   const { data, loading, error } = usePatientAppointments(refetchKey);
   const upcoming = data?.upcoming ?? [];
   const past = data?.past ?? [];
+  const declined = data?.declined ?? [];
 
   return (
     <DashboardLayout requiredRole="patient">
@@ -59,9 +62,9 @@ const Appointments = () => {
             <SectionCard title={`Upcoming (${upcoming.length})`} className="lg:col-span-2">
               {upcoming.length > 0 ? (
                 <ul className="space-y-3">
-                  {upcoming.map((a: any) => {
+                  {upcoming.map((a: PatientAppointment) => {
                     const Icon = modeIcon[a.mode as keyof typeof modeIcon] ?? Calendar;
-                    const doctor = (a.doctor as any)?.full_name ?? "Unknown doctor";
+                    const doctor = a.doctor?.[0]?.full_name ?? "Unknown doctor";
                     return (
                       <li key={a.id} className="flex flex-wrap items-center gap-4 rounded-xl border border-border/60 bg-background/60 p-4 sm:flex-nowrap">
                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -107,26 +110,57 @@ const Appointments = () => {
               )}
             </SectionCard>
 
-            <SectionCard title={`Past visits (${past.length})`}>
-              {past.length > 0 ? (
-                <ul className="divide-y divide-border/60">
-                  {past.slice(0, 6).map((p: any) => {
-                    const doctor = (p.doctor as any)?.full_name ?? "Unknown doctor";
-                    return (
-                      <li key={p.id} className="py-3">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" /> {doctor}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {format(new Date(p.scheduled_at), "MMM d, yyyy")} · {p.notes ?? p.status}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="py-4 text-center text-sm text-muted-foreground">No past visits yet.</p>
-              )}
+            <SectionCard title="Appointment history">
+              <div>
+                <h2 className="text-sm font-semibold">Past visits ({past.length})</h2>
+                {past.length > 0 ? (
+                  <ul className="divide-y divide-border/60">
+                    {past.slice(0, 6).map((p: PatientAppointment) => {
+                      const doctor = p.doctor?.[0]?.full_name ?? "Unknown doctor";
+                      return (
+                        <li key={p.id} className="py-3">
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" /> {doctor}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {format(new Date(p.scheduled_at), "MMM d, yyyy")} · {p.notes ?? p.status}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="py-3 text-sm text-muted-foreground">No past visits yet.</p>
+                )}
+              </div>
+
+              <div className="mt-3 border-t border-border/60 pt-3">
+                <h2 className="text-sm font-semibold">Declined requests ({declined.length})</h2>
+                {declined.length > 0 ? (
+                  <ul className="divide-y divide-border/60">
+                    {declined.slice(0, 6).map((appointment: PatientAppointment) => {
+                      const doctor = appointment.doctor?.[0]?.full_name ?? "Unknown doctor";
+                      return (
+                        <li key={appointment.id} className="py-3">
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" /> {doctor}
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(appointment.scheduled_at), "MMM d, yyyy")}
+                            </span>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusColor.cancelled}`}>
+                              Declined
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="py-3 text-sm text-muted-foreground">No declined requests.</p>
+                )}
+              </div>
             </SectionCard>
           </>
         )}
