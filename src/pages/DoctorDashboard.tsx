@@ -45,7 +45,7 @@ const DoctorDashboard = () => {
     setUpdatingAppointmentId(id);
     try {
       await updateDoctorAppointmentStatus(id, status);
-      toast.success(status === "confirmed" ? "Appointment confirmed" : status === "cancelled" ? "Appointment declined" : "Appointment marked complete");
+      toast.success(status === "confirmed" ? "Appointment approved" : status === "cancelled" ? "Appointment declined" : "Appointment marked complete");
       refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to update appointment.");
@@ -138,7 +138,7 @@ const DoctorDashboard = () => {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    aria-label={`Confirm appointment for ${patient?.full_name ?? "patient"}`}
+                                    aria-label={`Approve appointment for ${patient?.full_name ?? "patient"}`}
                                     disabled={updatingAppointmentId === a.id}
                                     onClick={() => void setAppointmentStatus(a.id, "confirmed")}
                                   >

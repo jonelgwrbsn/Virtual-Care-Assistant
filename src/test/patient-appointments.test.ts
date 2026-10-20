@@ -20,5 +20,6 @@ describe("patient appointment lists", () => {
     expect(result.upcoming.map(({ id }) => id)).toEqual(["pending-past", "pending-future", "confirmed-future"]);
     expect(result.past.map(({ id }) => id)).toEqual(["confirmed-past", "completed"]);
     expect(result.declined.map(({ id }) => id)).toEqual(["cancelled", "declined-past"]);
+    expect(result.approved.map(({ id }) => id)).toEqual(["confirmed-past", "confirmed-future"]);
   });
 });
