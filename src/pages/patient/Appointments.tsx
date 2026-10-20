@@ -65,7 +65,7 @@ const Appointments = () => {
                 <ul className="space-y-3">
                   {upcoming.map((a: PatientAppointment) => {
                     const Icon = modeIcon[a.mode as keyof typeof modeIcon] ?? Calendar;
-                    const doctor = a.doctor?.[0]?.full_name ?? "Unknown doctor";
+                    const doctor = a.doctor?.full_name ?? "Unknown doctor";
                     return (
                       <li key={a.id} className="flex flex-wrap items-center gap-4 rounded-xl border border-border/60 bg-background/60 p-4 sm:flex-nowrap">
                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -117,7 +117,7 @@ const Appointments = () => {
                 {approved.length > 0 ? (
                   <ul className="divide-y divide-border/60">
                     {approved.slice(0, 6).map((appointment: PatientAppointment) => {
-                      const doctor = appointment.doctor?.[0]?.full_name ?? "Unknown doctor";
+                      const doctor = appointment.doctor?.full_name ?? "Unknown doctor";
                       return (
                         <li key={appointment.id} className="py-3">
                           <div className="flex items-center gap-2 text-sm font-medium">
@@ -145,7 +145,7 @@ const Appointments = () => {
                 {past.length > 0 ? (
                   <ul className="divide-y divide-border/60">
                     {past.slice(0, 6).map((p: PatientAppointment) => {
-                      const doctor = p.doctor?.[0]?.full_name ?? "Unknown doctor";
+                      const doctor = p.doctor?.full_name ?? "Unknown doctor";
                       return (
                         <li key={p.id} className="py-3">
                           <div className="flex items-center gap-2 text-sm font-medium">
@@ -168,7 +168,7 @@ const Appointments = () => {
                 {declined.length > 0 ? (
                   <ul className="divide-y divide-border/60">
                     {declined.slice(0, 6).map((appointment: PatientAppointment) => {
-                      const doctor = appointment.doctor?.[0]?.full_name ?? "Unknown doctor";
+                      const doctor = appointment.doctor?.full_name ?? "Unknown doctor";
                       return (
                         <li key={appointment.id} className="py-3">
                           <div className="flex items-center gap-2 text-sm font-medium">

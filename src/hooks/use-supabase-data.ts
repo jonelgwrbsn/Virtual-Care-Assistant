@@ -76,7 +76,11 @@ export function usePatientAppointments(refetchKey = 0) {
       .eq("patient_id", session.id)
       .order("scheduled_at", { ascending: true });
     if (error) throw error;
-    return splitPatientAppointments(data ?? []);
+    const appointments = (data ?? []).map(appointment => ({
+      ...appointment,
+      doctor: firstRelated(appointment.doctor),
+    }));
+    return splitPatientAppointments(appointments);
   }, [session?.id, refetchKey]);
 }
 
