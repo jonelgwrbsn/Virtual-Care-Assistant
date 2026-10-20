@@ -5,13 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Loader2, Users, Stethoscope, Globe } from "lucide-react";
-import { useBroadcastNotifications, sendBroadcast } from "@/hooks/use-supabase-data";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Megaphone, Loader2, Users, Stethoscope, Globe, Trash2, type LucideIcon } from "lucide-react";
+import { useBroadcastNotifications, sendBroadcast, deleteBroadcast } from "@/hooks/use-supabase-data";
 import { getSession } from "@/lib/auth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
-const targetIcon: Record<string, any> = { all: Globe, patient: Users, doctor: Stethoscope };
+const targetIcon: Record<string, LucideIcon> = { all: Globe, patient: Users, doctor: Stethoscope };
 const targetLabel: Record<string, string> = { all: "Everyone", patient: "Patients", doctor: "Doctors" };
 const targetColor: Record<string, string> = {
   all: "bg-primary/10 text-primary",
@@ -28,6 +38,8 @@ export default function Broadcasts() {
   const [message, setMessage] = useState("");
   const [target, setTarget] = useState("all");
   const [sending, setSending] = useState(false);
+  const [broadcastToDelete, setBroadcastToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSend = async () => {
     if (!title.trim()) return toast.error("Title is required");
@@ -39,10 +51,26 @@ export default function Broadcasts() {
       toast.success(`Broadcast sent to ${targetLabel[target]}`);
       setTitle(""); setMessage(""); setTarget("all");
       setRefetchKey(k => k + 1);
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to send");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDelete = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (!broadcastToDelete) return;
+    setDeleting(true);
+    try {
+      await deleteBroadcast(broadcastToDelete.id);
+      toast.success("Broadcast deleted");
+      setBroadcastToDelete(null);
+      setRefetchKey(k => k + 1);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete broadcast.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -95,7 +123,7 @@ export default function Broadcasts() {
             <SectionCard title={`${broadcasts?.length ?? 0} sent`}>
               {broadcasts && broadcasts.length > 0 ? (
                 <ul className="divide-y divide-border/60">
-                  {broadcasts.map((b: any) => {
+                  {broadcasts.map((b) => {
                     const Icon = targetIcon[b.target_role] ?? Globe;
                     return (
                       <li key={b.id} className="py-3.5">
@@ -109,13 +137,26 @@ export default function Broadcasts() {
                               <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{b.message}</p>
                             </div>
                           </div>
-                          <div className="shrink-0 text-right">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${targetColor[b.target_role]}`}>
-                              {targetLabel[b.target_role]}
-                            </span>
-                            <div className="mt-1 text-[10px] text-muted-foreground">
-                              {formatDistanceToNow(new Date(b.created_at), { addSuffix: true })}
+                          <div className="flex shrink-0 items-start gap-2">
+                            <div className="text-right">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${targetColor[b.target_role]}`}>
+                                {targetLabel[b.target_role]}
+                              </span>
+                              <div className="mt-1 text-[10px] text-muted-foreground">
+                                {formatDistanceToNow(new Date(b.created_at), { addSuffix: true })}
+                              </div>
                             </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete broadcast: ${b.title}`}
+                              title="Delete broadcast"
+                              onClick={() => setBroadcastToDelete({ id: b.id, title: b.title })}
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </li>
@@ -129,6 +170,33 @@ export default function Broadcasts() {
           )}
         </div>
       </div>
+
+      <AlertDialog
+        open={broadcastToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setBroadcastToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this broadcast?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{broadcastToDelete?.title}” will be permanently removed and will no longer appear in recipients’ notifications.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Keep broadcast</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete broadcast
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

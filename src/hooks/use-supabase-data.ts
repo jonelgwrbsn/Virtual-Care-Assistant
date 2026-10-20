@@ -568,6 +568,20 @@ export async function sendBroadcast(createdBy: string, title: string, message: s
   if (error) throw error;
 }
 
+export async function deleteBroadcast(id: string) {
+  const session = getSession();
+  if (!session || session.role !== "admin") throw new Error("An admin session is required.");
+
+  const { data, error } = await supabase
+    .from("broadcast_notifications")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Broadcast not found or could not be deleted.");
+}
+
 // ── Admin: full audit log ──────────────────────────────────
 export function useAuditLog(refetchKey = 0) {
   return useQuery(async () => {
