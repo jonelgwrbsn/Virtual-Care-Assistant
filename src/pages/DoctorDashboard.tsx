@@ -157,16 +157,25 @@ const DoctorDashboard = () => {
                                 </>
                               )}
                               {a.status === "confirmed" && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  aria-label={`Complete appointment for ${patient?.full_name ?? "patient"}`}
-                                  disabled={updatingAppointmentId === a.id}
-                                  onClick={() => void setAppointmentStatus(a.id, "completed")}
-                                >
-                                  {updatingAppointmentId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Complete"}
-                                </Button>
+                                <>
+                                  {a.mode === "chat" && (
+                                    <Button asChild type="button" variant="outline" size="sm" className="gap-1.5">
+                                      <Link to={`/doctor/appointments/${a.id}/chat`}>
+                                        <MessagesSquare className="h-3.5 w-3.5" /> Chat
+                                      </Link>
+                                    </Button>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    aria-label={`Complete appointment for ${patient?.full_name ?? "patient"}`}
+                                    disabled={updatingAppointmentId === a.id}
+                                    onClick={() => void setAppointmentStatus(a.id, "completed")}
+                                  >
+                                    {updatingAppointmentId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Complete"}
+                                  </Button>
+                                </>
                               )}
                               <Button asChild variant="ghost" size="sm" className="gap-1.5 opacity-70 group-hover:opacity-100">
                                 {patient?.id ? (

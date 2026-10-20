@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { SectionCard, SectionCardSkeleton } from "@/components/dashboard/Cards";
 import { Calendar, Clock, Video, MapPin, Plus, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { usePatientAppointments } from "@/hooks/use-supabase-data";
 import { BookAppointmentModal } from "@/components/BookAppointmentModal";
 import { format } from "date-fns";
@@ -85,7 +86,14 @@ const Appointments = () => {
                             {a.status === "confirmed" ? "Approved" : a.status}
                           </span>
                         </div>
-                        {a.status === "confirmed" && (a.mode === "video" || a.mode === "chat") && (
+                        {a.status === "confirmed" && a.mode === "chat" && (
+                          <Button asChild size="sm" className="w-full gap-2 bg-gradient-primary text-primary-foreground sm:w-auto">
+                            <Link to={`/patient/appointments/${a.id}/chat`}>
+                              <MessagesSquare className="h-4 w-4" /> Join chat
+                            </Link>
+                          </Button>
+                        )}
+                        {a.status === "confirmed" && a.mode === "video" && (
                           <Button asChild size="sm" className="w-full bg-gradient-primary text-primary-foreground sm:w-auto">
                             <a
                               href={`https://meet.vca.health/${a.id}`}

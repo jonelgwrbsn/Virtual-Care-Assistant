@@ -14,6 +14,7 @@ const PatientChat = lazy(() => import("./pages/PatientChat.tsx"));
 const PatientRecords = lazy(() => import("./pages/patient/Records.tsx"));
 const PatientVitals = lazy(() => import("./pages/patient/Vitals.tsx"));
 const PatientAppointments = lazy(() => import("./pages/patient/Appointments.tsx"));
+const AppointmentChat = lazy(() => import("./pages/AppointmentChat.tsx"));
 const PatientIntegrations = lazy(() => import("./pages/patient/Integrations.tsx"));
 const DoctorDashboard = lazy(() => import("./pages/DoctorDashboard.tsx"));
 const DoctorConsultations = lazy(() => import("./pages/doctor/Consultations.tsx"));
@@ -47,12 +48,14 @@ const App = () => (
             <Route path="/patient/records" element={<PatientRecords />} />
             <Route path="/patient/vitals" element={<PatientVitals />} />
             <Route path="/patient/appointments" element={<PatientAppointments />} />
+            <Route path="/patient/appointments/:appointmentId/chat" element={<AppointmentChat requiredRole="patient" />} />
             <Route path="/patient/integrations" element={<PatientIntegrations />} />
             <Route element={<StaffMfaRoute requiredRole="doctor" />}>
               <Route path="/doctor" element={<DoctorDashboard />} />
               <Route path="/doctor/consultations" element={<DoctorConsultations />} />
               <Route path="/doctor/patients" element={<DoctorPatients />} />
               <Route path="/doctor/schedule" element={<DoctorSchedule />} />
+              <Route path="/doctor/appointments/:appointmentId/chat" element={<AppointmentChat requiredRole="doctor" />} />
             </Route>
             <Route element={<StaffMfaRoute requiredRole="admin" />}>
               <Route path="/admin" element={<AdminDashboard />} />

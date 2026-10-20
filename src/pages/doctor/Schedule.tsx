@@ -3,6 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { SectionCard, SectionCardSkeleton } from "@/components/dashboard/Cards";
 import { Clock, Video, MapPin, MessagesSquare, Pencil, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { useDoctorSchedule } from "@/hooks/use-supabase-data";
 import { getSession } from "@/lib/auth";
@@ -21,6 +22,7 @@ const modeTone = {
 
 const Schedule = () => {
   const session = getSession();
+  const sessionId = session?.id;
   const { data: schedule, loading } = useDoctorSchedule();
 
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -39,11 +41,11 @@ const Schedule = () => {
 
   // Load current availability from profile
   useEffect(() => {
-    if (!session) return;
+    if (!sessionId) return;
     supabase
       .from("profiles")
       .select("available_days, available_hours")
-      .eq("id", session.id)
+      .eq("id", sessionId)
       .single()
       .then(({ data }) => {
         if (data) {
@@ -52,7 +54,7 @@ const Schedule = () => {
         }
         setLoadingAvail(false);
       });
-  }, [session?.id]);
+  }, [sessionId]);
 
   const startEdit = () => {
     setDraftDays([...availDays]);
@@ -73,7 +75,7 @@ const Schedule = () => {
   };
 
   const saveAvailability = async () => {
-    if (!session) return;
+    if (!sessionId) return;
     if (draftDays.length === 0) { toast.error("Select at least one available day"); return; }
     if (!draftHours.trim())     { toast.error("Available hours is required"); return; }
 
@@ -86,19 +88,23 @@ const Schedule = () => {
           available_hours: draftHours.trim(),
           updated_at:      new Date().toISOString(),
         })
-        .eq("id", session.id);
+        .eq("id", sessionId);
       if (error) throw error;
 
       setAvailDays(draftDays);
       setAvailHours(draftHours.trim());
       setEditing(false);
       toast.success("Availability updated");
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to save");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save");
     } finally {
       setSaving(false);
     }
   };
+
+  const todaySchedule = (schedule ?? []).filter(appointment =>
+    isToday(new Date(appointment.scheduled_at))
+  );
 
   return (
     <DashboardLayout requiredRole="doctor">
@@ -111,7 +117,7 @@ const Schedule = () => {
       <div className="mb-6 grid grid-cols-7 gap-2">
         {weekDays.map((day) => {
           const today = isToday(day);
-          const apptCount = (schedule ?? []).filter((a: any) =>
+          const apptCount = (schedule ?? []).filter(a =>
             new Date(a.scheduled_at).toDateString() === day.toDateString()
           ).length;
           const dayName = format(day, "EEEE");
@@ -141,10 +147,10 @@ const Schedule = () => {
             <SectionCardSkeleton rows={5} />
           ) : (
             <SectionCard title="Today's agenda">
-              {schedule && schedule.filter((a: any) => isToday(new Date(a.scheduled_at))).length > 0 ? (
+              {todaySchedule.length > 0 ? (
                 <ul className="space-y-2">
-                  {schedule.filter((a: any) => isToday(new Date(a.scheduled_at))).map((e: any) => {
-                    const patient = (e.patient as any);
+                  {todaySchedule.map(e => {
+                    const patient = Array.isArray(e.patient) ? e.patient[0] : e.patient;
                     const Icon = modeIcon[e.mode as keyof typeof modeIcon] ?? Video;
                     const tone = modeTone[e.mode as keyof typeof modeTone] ?? "text-primary bg-primary/10";
                     return (
@@ -164,6 +170,13 @@ const Schedule = () => {
                           e.status === "pending"   ? "bg-warning/15 text-warning" :
                           "bg-muted text-muted-foreground"
                         }`}>{e.status}</span>
+                        {e.status === "confirmed" && e.mode === "chat" && (
+                          <Button asChild size="sm" variant="outline" className="gap-1.5">
+                            <Link to={`/doctor/appointments/${e.id}/chat`}>
+                              <MessagesSquare className="h-3.5 w-3.5" /> Chat
+                            </Link>
+                          </Button>
+                        )}
                       </li>
                     );
                   })}

@@ -25,7 +25,7 @@ const PatientDashboard = () => {
 
   const loading = vitalsLoading || consultsLoading || apptsLoading;
   const nextAppt = appts?.upcoming?.[0];
-  const nextDoctor = (nextAppt?.doctor as any)?.full_name ?? "—";
+  const nextDoctor = nextAppt?.doctor?.full_name ?? "—";
 
   return (
     <DashboardLayout requiredRole="patient">
@@ -93,8 +93,14 @@ const PatientDashboard = () => {
                 <Button asChild variant="outline" size="sm" className="flex-1">
                   <Link to="/patient/appointments">View details</Link>
                 </Button>
-                {nextAppt.status === "confirmed" &&
-                  (nextAppt.mode === "video" || nextAppt.mode === "chat") && (
+                {nextAppt.status === "confirmed" && nextAppt.mode === "chat" && (
+                  <Button asChild size="sm" className="flex-1 gap-1.5 bg-gradient-primary text-primary-foreground">
+                    <Link to={`/patient/appointments/${nextAppt.id}/chat`}>
+                      <MessagesSquare className="h-3.5 w-3.5" /> Join chat
+                    </Link>
+                  </Button>
+                )}
+                {nextAppt.status === "confirmed" && nextAppt.mode === "video" && (
                     <Button asChild size="sm" className="flex-1 bg-gradient-primary text-primary-foreground gap-1.5">
                       <a
                         href={`https://meet.vca.health/${nextAppt.id}`}
@@ -144,7 +150,7 @@ const PatientDashboard = () => {
           <SectionCard title="Recent assessments">
             {consults && consults.length > 0 ? (
               <ul className="divide-y divide-border/60">
-                {consults.map((c: any) => {
+                {consults.map(c => {
                   const rec = recommendationLevel[c.status] ?? { label: c.status, color: "text-muted-foreground bg-muted" };
                   return (
                     <li key={c.id} className="flex items-center justify-between py-3">
